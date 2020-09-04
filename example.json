@@ -1,0 +1,38 @@
+{
+  "inputs": [
+    {
+      "filename": "test-files/videoroom-1234-user-1904449683341166-1598612354025799.opus",
+      "streamname": "audio-only",
+      "start": 1598612354025799
+    },
+    {
+      "filename": "test-files/videoroom-1234-user-3512617845152559-1598612399166215.webm",
+      "streamname": "screenshare",
+      "start": 1598612399166215
+    },
+    {
+      "filename": "test-files/videoroom-1234-user-1338986241906947-1598612492522931.webm",
+      "streamname": "video-vertical-phone",
+      "start": 1598612492522931
+    },
+    {
+      "filename": "test-files/videoroom-1234-user-5018717008329805-1598612520574980.webm",
+      "streamname": "screenshare-two",
+      "start": 1598612520574980
+    },
+    {
+      "filename": "test-files/videoroom-1234-user-5773335772804895-1598612503310065.opus",
+      "streamname": "audio-only-two",
+      "start": 1598612503310065
+    },
+    {
+      "filename": "test-files/videoroom-1234-user-4820726286832885-1598612309916751.webm",
+      "streamname": "video-computer",
+      "start": 1598612309916751
+    }
+  ],
+  "output_start": 1598612492522931,
+  "output_duration": 2,
+  "output_size": [200, 300],
+  "milestones": [{ "timestamp": 0, "main_video": "video-vertical-phone" }]
+}
