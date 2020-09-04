@@ -68,16 +68,28 @@ if __name__ == "__main__":
                     "setpts", "PTS-STARTPTS"
                 )
                 print(
-                    "Stream {input_info['streamname']} starts before main start: trimming"
+                    f"Stream {input_info['streamname']} starts before main start: trimming",
+                    file=sys.stderr,
                 )
             elif stream_delay < 0:
                 input = input.filter("setpts", "PTS-STARTPTS+{-stream_delay}")
                 print(
-                    "Stream {input_info['streamname']} starts after main start: delaying"
+                    f"Stream {input_info['streamname']} starts after main start: delaying",
+                    file=sys.stderr,
                 )
             inputs[input_info["streamname"]] = input
             if has_audio(input_file_info["streams"]):
-                audio_streams.append(ffmpeg.input(input_info["filename"]).audio)
+                audio = ffmpeg.input(input_info["filename"]).audio
+                if stream_delay > 0:
+                    audio_streams.append(
+                        audio.filter("atrim", start=stream_delay).filter(
+                            "asetpts", "PTS-STARTPTS"
+                        )
+                    )
+                else:
+                    audio_streams.append(
+                        audio.filter("setpts", "PTS-STARTPTS+{-stream_delay}")
+                    )
         else:
             print(f"Discarding input {input_info['streamname']}")
 
@@ -86,6 +98,7 @@ if __name__ == "__main__":
     in_video = inputs["video-vertical-phone"].filter(
         "scale", size=size, force_original_aspect_ratio="increase"
     )
+
     out, _ = (
         mixed_audio.output(in_video, "out.mp4", t=output_duration)
         .overwrite_output()
