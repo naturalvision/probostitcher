@@ -31,8 +31,8 @@
       "start": 1598612309916751
     }
   ],
-  "output_start": 1598612492522931,
-  "output_duration": 2,
+  "output_start": 1598612494315000,
+  "output_duration": 30,
   "output_size": [200, 300],
   "milestones": [{ "timestamp": 0, "main_video": "video-vertical-phone" }]
 }
