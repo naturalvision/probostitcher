@@ -1,6 +1,6 @@
 #!/usr/bin/env python
+from pendulum import DateTime
 from pendulum import from_timestamp
-from pendulum import Pendulum
 from pendulum import Period
 
 import ffmpeg
@@ -18,7 +18,7 @@ class Specs:
             self.inputs[fileinfo["streamname"]] = ffmpeg.probe(fileinfo["filename"])
 
 
-def parse_ts(ts: int) -> Pendulum:
+def parse_ts(ts: int) -> DateTime:
     """Returns a Pendulum datetime parsed from the passed datetime from epoch in microseconds."""
     return from_timestamp(ts / 1000 ** 2)
 
