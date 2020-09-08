@@ -1,5 +1,9 @@
+stages:
+  - test
+
 default:
   image: python:3.8
+  stage: test
   before_script:
     - apt-get update
     - apt-get install -y ffmpeg
@@ -9,6 +13,7 @@ default:
     - pytest
 
 precommit:
+  stage: test
   image: python:3.8
   before_script:
     - pip install pre-commit
