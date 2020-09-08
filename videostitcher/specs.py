@@ -35,7 +35,9 @@ class Specs:
         self.get_final(destination).run()
 
     def get_final(self, destination: str) -> OutputStream:
-        """Returns a"""
+        """Returns an OutputStream object representing the work needed to produce the
+        final output. Useful methods on that object are `view()` (shows a graphical
+        representation of the video processing graph) and `run()` (actually produces the file)"""
         output_start = parse_ts(int(self.config["output_start"]))
         output_duration = self.config["output_duration"]
         output_end = output_start.add(seconds=output_duration)
