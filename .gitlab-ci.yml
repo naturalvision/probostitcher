@@ -1,6 +1,13 @@
 stages:
   - test
 
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  PRE_COMMIT_HOME: "$CI_PROJECT_DIR/.cache/pre-commit"
+cache:
+  paths:
+    - .cache
+
 default:
   image: python:3.8
   stage: test
