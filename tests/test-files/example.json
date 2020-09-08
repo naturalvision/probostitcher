@@ -1,0 +1,58 @@
+{
+  "inputs": [
+    {
+      "filename": "videoroom-1234-user-1904449683341166-1598612354025799.opus",
+      "streamname": "audio-only",
+      "start": 1598612354025799
+    },
+    {
+      "filename": "videoroom-1234-user-3512617845152559-1598612399166215.webm",
+      "streamname": "screenshare",
+      "start": 1598612399166215
+    },
+    {
+      "filename": "videoroom-1234-user-1338986241906947-1598612492522931.webm",
+      "streamname": "video-vertical-phone",
+      "start": 1598612492522931
+    },
+    {
+      "filename": "videoroom-1234-user-5018717008329805-1598612520574980.webm",
+      "streamname": "screenshare-two",
+      "start": 1598612520574980
+    },
+    {
+      "filename": "videoroom-1234-user-5773335772804895-1598612503310065.opus",
+      "streamname": "audio-only-two",
+      "start": 1598612503310065
+    },
+    {
+      "filename": "videoroom-1234-user-4820726286832885-1598612309916751.webm",
+      "streamname": "video-computer",
+      "start": 1598612309916751
+    }
+  ],
+  "output_start": 1598612547000000,
+  "output_duration": 120,
+  "output_size": { "width": 200, "height": 300 },
+  "milestones": [
+    {
+      "timestamp": 0,
+      "videos": [
+        {
+          "streamname": "screenshare-two"
+        }
+      ]
+    },
+    {
+      "timestamp": 10,
+      "videos": [
+        {
+          "streamname": "video-vertical-phone",
+          "width": 40,
+          "x": 150,
+          "y": 250
+        }
+      ]
+    }
+  ]
+}
