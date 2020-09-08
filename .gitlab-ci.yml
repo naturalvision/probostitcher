@@ -1,0 +1,16 @@
+default:
+  image: python:3.8
+  before_script:
+    - apt-get update
+    - apt-get install -y ffmpeg
+    - pip install -e .
+    - pip install pytest
+  script:
+    - pytest
+
+precommit:
+  image: python:3.8
+  before_script:
+    - pip install pre-commit
+  script:
+    - pre-commit run -a
