@@ -36,10 +36,12 @@ class Specs:
 
     def prepare_inputs(self):
         """Prepare the input tracks needed to assemble the output.
-        Store the result in self.tracks
+        Store the result in self.video_tracks
         """
-        self.tracks = {}
+        self.video_tracks = {}
         self.inputs = {}
+        audio_streams = []
+        self.input_stream_nodes = []
         for input_info in self.config["inputs"]:
             # Convert file paths to absolute in case they're relative
             # TODO we can support HTTP URLs by prepending async:cache
@@ -48,18 +50,32 @@ class Specs:
             print(f"Analyzing {input_info['filename']}", file=sys.stderr)
             # Use ffprobe to get more info about streams
             input_file_info = ffmpeg.probe(input_info["filename"])
-
+            width, height = 640, 480
+            size = f"{width}:{height}"
+            if has_video(input_file_info):
+                self.input_stream_nodes.append(
+                    ffmpeg.input(input_info["filename"])
+                    .filter(
+                        "scale",
+                        size=size,
+                        force_original_aspect_ratio="decrease",
+                    )
+                    .filter("pad", width, height, "(ow-iw)/2", "(oh-ih)/2")
+                )
             input_start = parse_ts(int(input_info["start"]))
             input_duration = float(input_file_info["format"]["duration"])
             input_end = input_start.add(seconds=input_duration)
             input_period = input_end - input_start
-            audio_streams = []
             if overlaps(self.output_period, input_period):
-                self.tracks[input_info["streamname"]] = adjust_track(
-                    input_info, self.output_period
-                )
-            if has_audio(input_file_info["streams"]):
-                audio_streams.append(adjust_audio_track(input_info, self.output_period))
+                size = "{width}:{height}".format(**self.config["output_size"])
+                if has_video(input_file_info):
+                    adjusted_video = adjust_video_track(
+                        input_info, self.output_period, size
+                    )
+                    self.video_tracks[input_info["streamname"]] = adjusted_video
+
+                if has_audio(input_file_info["streams"]):
+                    audio_streams.append(adjust_audio_track(input_info, self.output_period))
         self.audio_track = ffmpeg.filter(
             audio_streams, "amix", inputs=len(audio_streams)
         )
@@ -78,16 +94,32 @@ class Specs:
         """Returns an OutputStream object representing the work needed to produce the
         final output. Useful methods on that object are `view()` (shows a graphical
         representation of the video processing graph) and `run()` (actually produces the file)"""
+        # return in_video.output(destination, t=self.output_period.in_seconds())
+        output_options = {}
+        #return in_video.output(t=self.output_period.in_seconds(), filename=destination, **output_options)
+        # in_video = self.video_tracks["video-vertical-phone"]
+        width, height = self.config["output_size"]["width"], self.config["output_size"]["height"]
         size = "{width}:{height}".format(**self.config["output_size"])
-        in_video = self.tracks["video-vertical-phone"].filter(
-            "scale", size=size, force_original_aspect_ratio="increase"
+        def scale_video(video):
+            return video.filter(
+                        "scale",
+                        size=size,
+                        force_original_aspect_ratio="decrease",
+                    ).filter("pad", width, height, "(ow-iw)/2", "(oh-ih)/2")
+
+        in_video = ffmpeg.filter(
+            list(map(scale_video, self.video_tracks.values())), "hstack", inputs=len(self.video_tracks)
         )
         return self.audio_track.output(
-            in_video, destination, t=self.output_period.in_seconds()
+            in_video,
+            destination,
+            t=self.output_period.in_seconds(),
         )
 
 
-def adjust_track(input_info: Dict[str, str], output_period: Period) -> FilterableStream:
+def adjust_video_track(
+    input_info: Dict[str, str], output_period: Period, size: str
+) -> FilterableStream:
     """Adjust a track so that it has the same duration as the output period"""
     # stream_delay is the length of time between the start of this stream and te start of the output
     # A positive value means this input should be trimmed, and starts as the output starts.
@@ -142,3 +174,7 @@ def overlaps(p1: Period, p2: Period) -> bool:
 
 def has_audio(input):
     return any(el.get("channels") for el in input)
+
+
+def has_video(input):
+    return any(el.get("coded_width") for el in input["streams"])

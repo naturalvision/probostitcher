@@ -31,9 +31,9 @@
       "start": 1598612309916751
     }
   ],
-  "output_start": 1598612547000000,
-  "output_duration": 120,
-  "output_size": { "width": 200, "height": 300 },
+  "output_start": 1598612540000000,
+  "output_duration": 20,
+  "output_size": { "width": 300, "height": 200 },
   "milestones": [
     {
       "timestamp": 0,
