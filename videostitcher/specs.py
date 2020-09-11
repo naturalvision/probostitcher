@@ -31,6 +31,7 @@ class Specs:
             self.config = json.load(fh)
         output_start = parse_ts(int(self.config["output_start"]))
         output_end = output_start.add(seconds=self.config["output_duration"])
+        self.width, self.height = self.config["output_size"]["width"], self.config["output_size"]["height"]
         self.output_period = output_end - output_start
         self.prepare_inputs()
 
@@ -41,7 +42,6 @@ class Specs:
         self.video_tracks = {}
         self.inputs = {}
         audio_streams = []
-        self.input_stream_nodes = []
         for input_info in self.config["inputs"]:
             # Convert file paths to absolute in case they're relative
             # TODO we can support HTTP URLs by prepending async:cache
@@ -50,18 +50,6 @@ class Specs:
             print(f"Analyzing {input_info['filename']}", file=sys.stderr)
             # Use ffprobe to get more info about streams
             input_file_info = ffmpeg.probe(input_info["filename"])
-            width, height = 640, 480
-            size = f"{width}:{height}"
-            if has_video(input_file_info):
-                self.input_stream_nodes.append(
-                    ffmpeg.input(input_info["filename"])
-                    .filter(
-                        "scale",
-                        size=size,
-                        force_original_aspect_ratio="decrease",
-                    )
-                    .filter("pad", width, height, "(ow-iw)/2", "(oh-ih)/2")
-                )
             input_start = parse_ts(int(input_info["start"]))
             input_duration = float(input_file_info["format"]["duration"])
             input_end = input_start.add(seconds=input_duration)
@@ -69,8 +57,9 @@ class Specs:
             if overlaps(self.output_period, input_period):
                 size = "{width}:{height}".format(**self.config["output_size"])
                 if has_video(input_file_info):
+                    width, height = [(el["width"], el["height"]) for el in input_file_info["streams"] if "width" in el][0]
                     adjusted_video = adjust_video_track(
-                        input_info, self.output_period, size
+                        input_info, self.output_period, self.width, self.height
                     )
                     self.video_tracks[input_info["streamname"]] = adjusted_video
 
@@ -117,10 +106,21 @@ class Specs:
         )
 
 
+def scale_to(input, width, height):
+    """Scale the given video and add black bands to make it exactly the desired size
+    """
+    return input.filter(
+                "scale",
+                size=f"{width}:{height}",
+                force_original_aspect_ratio="decrease",
+            ).filter("pad", width, height, "(ow-iw)/2", "(oh-ih)/2").filter("setsar", "1", "1")
+
+
 def adjust_video_track(
-    input_info: Dict[str, str], output_period: Period, size: str
+    input_info: Dict[str, str], output_period: Period, width: int, height: int
 ) -> FilterableStream:
-    """Adjust a track so that it has the same duration as the output period"""
+    """Adjust a track so that it has the same duration as the output period.
+    Size is needed to create black padding video of the right size"""
     # stream_delay is the length of time between the start of this stream and te start of the output
     # A positive value means this input should be trimmed, and starts as the output starts.
     # A negative value means this input should be delayed, and starts at a later point than the main output.
@@ -133,9 +133,16 @@ def adjust_video_track(
             "setpts", "PTS-STARTPTS"
         )
     elif stream_delay < 0:
-        input = input.filter("setpts", "PTS-STARTPTS+{-stream_delay}")
+        # We should add black frames for `stream_delay` time: first we create the video to prepend
+        intro = scale_to((ffmpeg.overlay(
+            ffmpeg.source("testsrc"),
+            ffmpeg.source("color", color="red@.3"),
+        )
+        .trim(end=abs(stream_delay))
+        ), width, height)
+        input = ffmpeg.concat(intro, scale_to(input, width, height))
+        input = input.filter("setpts", f"PTS-STARTPTS")
     return input
-
 
 def adjust_audio_track(
     input_info: Dict[str, str], output_period: Period
@@ -150,7 +157,10 @@ def adjust_audio_track(
             "asetpts", "PTS-STARTPTS"
         )
     else:
-        return audio.filter("setpts", "PTS-STARTPTS+{-stream_delay}")
+        intro = ffmpeg.source("anullsrc").filter("atrim", duration=abs(stream_delay))
+        return ffmpeg.concat(intro, audio, v=0, a=1).filter(
+            "asetpts", "PTS-STARTPTS"
+        )
 
 
 def parse_ts(ts: int) -> DateTime:

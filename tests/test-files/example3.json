@@ -1,0 +1,32 @@
+{
+  "inputs": [
+    {
+      "filename": "1599816327-2020-09-11__11:25:27.webm",
+      "start": 1599816327021244,
+      "streamname": "daniel"
+    },
+    {
+      "filename": "1599816334-2020-09-11__11:25:34.webm",
+      "start": 1599816334132181,
+      "streamname": "silvio"
+    },
+    {
+      "filename": "1599816385-2020-09-11__11:26:25.webm",
+      "start": 1599816385011657,
+      "streamname": "screenshare"
+    }
+  ],
+  "output_start": 1599816327021244,
+  "output_duration": 20,
+  "output_size": { "width": 300, "height": 200 },
+  "milestones": [
+    {
+      "timestamp": 0,
+      "videos": [
+        {
+          "streamname": "screenshare"
+        }
+      ]
+    }
+  ]
+}
