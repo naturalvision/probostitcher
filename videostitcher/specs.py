@@ -128,6 +128,9 @@ def adjust_video_track(
         output_period.start - parse_ts(int(input_info["start"]))
     ).in_seconds()
     input = ffmpeg.input(input_info["filename"])
+    video_begin = input_info["start"] / 1000 ** 2
+    # Burn in timecode
+    input = input.filter("drawtext", fontfile="FreeSerif.ttf", fontcolor="white", text='%{pts:gmtime:' + str(video_begin) + '}', fontsize="20")
     if stream_delay > 0:
         input = input.filter("trim", start=stream_delay).filter(
             "setpts", "PTS-STARTPTS"

@@ -6,7 +6,7 @@ import tempfile
 
 
 CREATE_VIDEO = False
-#CREATE_VIDEO = True
+CREATE_VIDEO = True
 
 
 def test_first():

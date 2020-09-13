@@ -16,8 +16,8 @@
       "streamname": "screenshare"
     }
   ],
-  "output_start": 1599816201990209,
-  "output_duration": 60,
+  "output_start": 1599816261990209,
+  "output_duration": 10,
   "output_size": { "width": 300, "height": 200 },
   "milestones": [
     {
