@@ -53,7 +53,8 @@ class Specs:
         for i in range(howmany):
             # Prepare chunk i
             milestone = self.config["milestones"][i]
-            if i == howmany - 1:  # This is the last milestone
+            is_last = i == howmany - 1
+            if is_last:  # This is the last milestone
                 end = self.config["output_duration"]
             else:
                 end = self.config["milestones"][i + 1]["timestamp"]
@@ -61,9 +62,14 @@ class Specs:
             chunk = None
             for video_specs in milestone["videos"]:
                 # Trim/resize the videos of this chunk
-                track = self.video_tracks[video_specs["streamname"]].trim(
-                    start=start, end=end
-                )
+                track = self.video_tracks[video_specs["streamname"]]
+                if not is_last:
+                    # If some later milestones exist they will want a copy of this track
+                    # So we split it, use one of the split result and store the other for later use
+                    split_track = track.split()
+                    track = split_track[0]
+                    self.video_tracks[video_specs["streamname"]] = split_track[1]
+                track = track.trim(start=start, end=end)
                 # Resize the video
                 width, height = (
                     video_specs.get("width", default_width),
