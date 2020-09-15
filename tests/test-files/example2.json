@@ -16,8 +16,9 @@
       "streamname": "screenshare"
     }
   ],
-  "output_start": 1599816261990209,
-  "output_duration": 10,
+  "output_start": 1599816231990209,
+  "output_duration": 50,
+  "output_framerate": 25,
   "output_size": { "width": 300, "height": 200 },
   "milestones": [
     {
@@ -25,6 +26,13 @@
       "videos": [
         {
           "streamname": "screenshare"
+        },
+        {
+          "streamname": "silvio",
+          "x": 200,
+          "y": 100,
+          "width": 100,
+          "height": 100
         }
       ]
     }

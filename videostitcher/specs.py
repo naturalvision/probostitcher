@@ -5,6 +5,7 @@ from pendulum import DateTime
 from pendulum import from_timestamp
 from pendulum import Period
 from typing import Dict
+from typing import List
 
 import ffmpeg
 import json
@@ -21,7 +22,9 @@ class Specs:
     #: Pendulum Period indicating the time span the output should show
     output_period: Period
     #: Tracks needed to assemble the output
-    tracks: Dict[str, FilterableStream]
+    video_tracks: Dict[str, FilterableStream]
+    #: Chunks that will make up the final video
+    video_chunks: List[FilterableStream]
     #: The audio track of the output
     audio_track: FilterableStream
 
@@ -31,16 +34,56 @@ class Specs:
             self.config = json.load(fh)
         output_start = parse_ts(int(self.config["output_start"]))
         output_end = output_start.add(seconds=self.config["output_duration"])
-        self.width, self.height = self.config["output_size"]["width"], self.config["output_size"]["height"]
+        self.width, self.height = (
+            self.config["output_size"]["width"],
+            self.config["output_size"]["height"],
+        )
         self.output_period = output_end - output_start
-        self.prepare_inputs()
+        self.prepare_tracks()
+        self.prepare_chunks()
 
-    def prepare_inputs(self):
+    def prepare_chunks(self):
+        assert self.config["milestones"][0]["timestamp"] == 0
+        self.video_chunks = []
+        howmany = len(self.config["milestones"])
+        default_width, default_height = (
+            self.config["output_size"]["width"],
+            self.config["output_size"]["height"],
+        )
+        for i in range(howmany):
+            # Prepare chunk i
+            milestone = self.config["milestones"][i]
+            if i == howmany - 1:  # This is the last milestone
+                end = self.config["output_duration"]
+            else:
+                end = self.config["milestones"][i + 1]["timestamp"]
+            start = milestone["timestamp"]
+            chunk = None
+            for video_specs in milestone["videos"]:
+                # Trim/resize the videos of this chunk
+                track = self.video_tracks[video_specs["streamname"]].trim(
+                    start=start, end=end
+                )
+                # Resize the video
+                width, height = (
+                    video_specs.get("width", default_width),
+                    video_specs.get("height", default_height),
+                )
+                track = scale_to(track, width, height)
+                # Overlay it over what we have so far
+                if chunk is None:
+                    chunk = track
+                else:
+                    x, y = video_specs.get("x", 0), video_specs.get("y", 0)
+                    chunk = chunk.overlay(track, x=x, y=y)
+            self.video_chunks.append(chunk)
+
+    def prepare_tracks(self):
         """Prepare the input tracks needed to assemble the output.
-        Store the result in self.video_tracks
+        Store the result in self.video_tracks and self.audio_track.
+        The audio track is final. The video tracks will be used to assemble chunks.
         """
         self.video_tracks = {}
-        self.inputs = {}
         audio_streams = []
         for input_info in self.config["inputs"]:
             # Convert file paths to absolute in case they're relative
@@ -55,16 +98,21 @@ class Specs:
             input_end = input_start.add(seconds=input_duration)
             input_period = input_end - input_start
             if overlaps(self.output_period, input_period):
-                size = "{width}:{height}".format(**self.config["output_size"])
                 if has_video(input_file_info):
-                    width, height = [(el["width"], el["height"]) for el in input_file_info["streams"] if "width" in el][0]
+                    width, height = [
+                        (el["width"], el["height"])
+                        for el in input_file_info["streams"]
+                        if "width" in el
+                    ][0]
                     adjusted_video = adjust_video_track(
                         input_info, self.output_period, self.width, self.height
                     )
                     self.video_tracks[input_info["streamname"]] = adjusted_video
 
                 if has_audio(input_file_info["streams"]):
-                    audio_streams.append(adjust_audio_track(input_info, self.output_period))
+                    audio_streams.append(
+                        adjust_audio_track(input_info, self.output_period)
+                    )
         self.audio_track = ffmpeg.filter(
             audio_streams, "amix", inputs=len(audio_streams)
         )
@@ -83,37 +131,48 @@ class Specs:
         """Returns an OutputStream object representing the work needed to produce the
         final output. Useful methods on that object are `view()` (shows a graphical
         representation of the video processing graph) and `run()` (actually produces the file)"""
-        # return in_video.output(destination, t=self.output_period.in_seconds())
-        output_options = {}
-        #return in_video.output(t=self.output_period.in_seconds(), filename=destination, **output_options)
-        # in_video = self.video_tracks["video-vertical-phone"]
-        width, height = self.config["output_size"]["width"], self.config["output_size"]["height"]
-        size = "{width}:{height}".format(**self.config["output_size"])
-        def scale_video(video):
-            return video.filter(
-                        "scale",
-                        size=size,
-                        force_original_aspect_ratio="decrease",
-                    ).filter("pad", width, height, "(ow-iw)/2", "(oh-ih)/2")
-
-        in_video = ffmpeg.filter(
-            list(map(scale_video, self.video_tracks.values())), "hstack", inputs=len(self.video_tracks)
-        )
+        # in_video = self._combine_tracks_hstack()  # Uncomment to debug and see all videos side by side
+        in_video = ffmpeg.concat(*self.video_chunks)
+        fps = self.config.get("output_framerate", 25)
         return self.audio_track.output(
-            in_video,
+            in_video.filter("fps", fps),
             destination,
             t=self.output_period.in_seconds(),
         )
 
+    def _combine_tracks_hstack(self):
+        """Utility/debug function to get all tracks next to each other using the hstack filter"""
+        width, height = (
+            self.config["output_size"]["width"],
+            self.config["output_size"]["height"],
+        )
+        size = "{width}:{height}".format(**self.config["output_size"])
+
+        def scale_video(video):
+            return video.filter(
+                "scale",
+                size=size,
+                force_original_aspect_ratio="decrease",
+            ).filter("pad", width, height, "(ow-iw)/2", "(oh-ih)/2")
+
+        return ffmpeg.filter(
+            list(map(scale_video, self.video_tracks.values())),
+            "hstack",
+            inputs=len(self.video_tracks),
+        )
+
 
 def scale_to(input, width, height):
-    """Scale the given video and add black bands to make it exactly the desired size
-    """
-    return input.filter(
-                "scale",
-                size=f"{width}:{height}",
-                force_original_aspect_ratio="decrease",
-            ).filter("pad", width, height, "(ow-iw)/2", "(oh-ih)/2").filter("setsar", "1", "1")
+    """Scale the given video and add black bands to make it exactly the desired size"""
+    return (
+        input.filter(
+            "scale",
+            size=f"{width}:{height}",
+            force_original_aspect_ratio="decrease",
+        )
+        .filter("pad", width, height, "(ow-iw)/2", "(oh-ih)/2")
+        .filter("setsar", "1", "1")
+    )
 
 
 def adjust_video_track(
@@ -128,24 +187,28 @@ def adjust_video_track(
         output_period.start - parse_ts(int(input_info["start"]))
     ).in_seconds()
     input = ffmpeg.input(input_info["filename"])
-    video_begin = input_info["start"] / 1000 ** 2
+    video_begin = int(input_info["start"]) / 1000 ** 2
     # Burn in timecode
-    input = input.filter("drawtext", fontfile="FreeSerif.ttf", fontcolor="white", text='%{pts:gmtime:' + str(video_begin) + '}', fontsize="20")
+    input = input.filter(
+        "drawtext",
+        fontfile="FreeSerif.ttf",
+        fontcolor="white",
+        text="%{pts:gmtime:" + str(video_begin) + "}",
+        fontsize="20",
+    )
     if stream_delay > 0:
         input = input.filter("trim", start=stream_delay).filter(
             "setpts", "PTS-STARTPTS"
         )
     elif stream_delay < 0:
         # We should add black frames for `stream_delay` time: first we create the video to prepend
-        intro = scale_to((ffmpeg.overlay(
-            ffmpeg.source("testsrc"),
-            ffmpeg.source("color", color="red@.3"),
+        intro = scale_to(
+            ffmpeg.source("testsrc").trim(end=abs(stream_delay)), width, height
         )
-        .trim(end=abs(stream_delay))
-        ), width, height)
         input = ffmpeg.concat(intro, scale_to(input, width, height))
-        input = input.filter("setpts", f"PTS-STARTPTS")
+        input = input.filter("setpts", "PTS-STARTPTS")
     return input
+
 
 def adjust_audio_track(
     input_info: Dict[str, str], output_period: Period
@@ -161,9 +224,7 @@ def adjust_audio_track(
         )
     else:
         intro = ffmpeg.source("anullsrc").filter("atrim", duration=abs(stream_delay))
-        return ffmpeg.concat(intro, audio, v=0, a=1).filter(
-            "asetpts", "PTS-STARTPTS"
-        )
+        return ffmpeg.concat(intro, audio, v=0, a=1).filter("asetpts", "PTS-STARTPTS")
 
 
 def parse_ts(ts: int) -> DateTime:
