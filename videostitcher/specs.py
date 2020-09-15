@@ -69,7 +69,10 @@ class Specs:
                     split_track = track.split()
                     track = split_track[0]
                     self.video_tracks[video_specs["streamname"]] = split_track[1]
-                track = track.trim(start=start, end=end)
+                track = track.trim(start=start, end=end).filter(
+                    "setpts", "PTS-STARTPTS"
+                )
+
                 # Resize the video
                 width, height = (
                     video_specs.get("width", default_width),
