@@ -277,10 +277,10 @@ def parse_ts(ts: int) -> DateTime:
 
 def overlaps(p1: Period, p2: Period) -> bool:
     """Return True if the two passed periods overlap, False otherwise"""
-    if p2.start < p1.start < p2.end:
+    if p2.start <= p1.start < p2.end:
         # p1 starts during p2
         return True
-    if p2.start < p1.end < p2.end:
+    if p2.start < p1.end <= p2.end:
         # p1 ends during p2
         return True
     if p2.start <= p1.start and p2.end >= p1.end:
