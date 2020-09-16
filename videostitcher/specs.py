@@ -182,7 +182,8 @@ class Specs:
             in_video.filter("fps", fps),
             destination,
             t=self.output_period.in_seconds(),
-            vsync="vfr",
+            vsync="cfr",  # Frames will be duplicated and dropped to achieve exactly the requested constant frame rate
+            copytb=1,  # Use the demuxer timebase.
         )
 
     def _combine_tracks_hstack(self):
