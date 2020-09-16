@@ -4,6 +4,7 @@ from videostitcher.specs import parse_ts
 
 import os
 import pytest
+import shlex
 import tempfile
 
 
@@ -42,7 +43,7 @@ def test_video_generation(json_filename):
     specs = Specs(Path(__file__).parent / "test-files" / json_filename)
     tmp_path = get_tmp_path()
     final = specs.get_final(tmp_path)
-    print(" \\\n".join(final.compile()))  # Smoke test
+    print(" \\\n".join(map(shlex.quote, final.compile())))  # Smoke test
     # Uncomment the next line to see the rendering plan graph
     # final.view()
     if CREATE_VIDEO:
