@@ -129,12 +129,14 @@ class Specs:
                     input_info["start_from_comment_s"] = json.loads(
                         input_file_info["format"]["tags"]["COMMENT"]
                     )["s"]
-            input_info["start_from_filename"] = int(
-                re.match(".*-([0-9]*).(webm|opus)", input_info["filename"]).groups()[0]
-            )
-            input_info["start"] = input_info["start_from_comment_s"]
-            input_info["start"] = input_info["start_from_comment_u"]
-            input_info["start"] = input_info["start_from_filename"]
+                input_info["start_from_filename"] = int(
+                    re.match(
+                        ".*-([0-9]*).(webm|opus)", input_info["filename"]
+                    ).groups()[0]
+                )
+                input_info["start"] = input_info["start_from_comment_s"]
+                input_info["start"] = input_info["start_from_comment_u"]
+                input_info["start"] = input_info["start_from_filename"]
             input_start = parse_ts(input_info["start"])
             input_duration = float(input_file_info["format"]["duration"])
             input_end = input_start.add(seconds=input_duration)
