@@ -9,6 +9,7 @@ from typing import List
 
 import ffmpeg
 import json
+import re
 import sys
 
 
@@ -102,7 +103,39 @@ class Specs:
             print(f"Analyzing {input_info['filename']}", file=sys.stderr)
             # Use ffprobe to get more info about streams
             input_file_info = ffmpeg.probe(input_info["filename"])
-            input_start = parse_ts(int(input_info["start"]))
+            if "start" not in input_info:
+                info_from_stream_comment = [
+                    el["tags"]["COMMENT"]
+                    for el in input_file_info["streams"]
+                    if "COMMENT" in el.get("tags", {})
+                ]
+                info_from_stream_comment = info_from_stream_comment or [
+                    el["tags"]["comment"]
+                    for el in input_file_info["streams"]
+                    if "comment" in el.get("tags", {})
+                ]
+                if info_from_stream_comment:
+                    input_info["start_from_comment_u"] = json.loads(
+                        info_from_stream_comment[0]
+                    )["u"]
+                    input_info["start_from_comment_s"] = json.loads(
+                        info_from_stream_comment[0]
+                    )["s"]
+                else:
+                    # Get the input from the "format" key
+                    input_info["start_from_comment_u"] = json.loads(
+                        input_file_info["format"]["tags"]["COMMENT"]
+                    )["u"]
+                    input_info["start_from_comment_s"] = json.loads(
+                        input_file_info["format"]["tags"]["COMMENT"]
+                    )["s"]
+            input_info["start_from_filename"] = int(
+                re.match(".*-([0-9]*).(webm|opus)", input_info["filename"]).groups()[0]
+            )
+            input_info["start"] = input_info["start_from_comment_s"]
+            input_info["start"] = input_info["start_from_comment_u"]
+            input_info["start"] = input_info["start_from_filename"]
+            input_start = parse_ts(input_info["start"])
             input_duration = float(input_file_info["format"]["duration"])
             input_end = input_start.add(seconds=input_duration)
             input_period = input_end - input_start
@@ -213,7 +246,7 @@ def adjust_video_track(
         # We should add black frames for `stream_delay` time: first we create the video to prepend
         intro = scale_to(
             ffmpeg.source("testsrc").trim(end=abs(stream_delay)), width, height
-        )
+        ).filter("reverse")
         input = ffmpeg.concat(intro, scale_to(input, width, height))
         input = input.filter("setpts", "PTS-STARTPTS")
     return input

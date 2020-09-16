@@ -2,17 +2,14 @@
   "inputs": [
     {
       "filename": "videoroom-1234-user-6500322355549794-1599816327021244.webm",
-      "start": 1599816327021244,
       "streamname": "daniel"
     },
     {
       "filename": "videoroom-1234-user-7709772833758510-1599816334132181.webm",
-      "start": 1599816334132181,
       "streamname": "silvio"
     },
     {
       "filename": "videoroom-1234-user-4977224706878644-1599816385011657.webm",
-      "start": 1599816385011657,
       "streamname": "screenshare"
     }
   ],
