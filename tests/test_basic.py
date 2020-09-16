@@ -3,6 +3,7 @@ from videostitcher import Specs
 from videostitcher.specs import parse_ts
 
 import os
+import pytest
 import tempfile
 
 
@@ -36,32 +37,9 @@ def disabled_test_start_offsets():
     Console().print(table)
 
 
-def test_first():
-    specs = Specs(Path(__file__).parent / "test-files" / "example.json")
-    tmp_path = get_tmp_path()
-    final = specs.get_final(tmp_path)
-    print(" \\\n".join(final.compile()))  # Smoke test
-    # Uncomment the next line to see the rendering plan graph
-    # final.view()
-    if CREATE_VIDEO:
-        final.run()
-        print(f"Written file {tmp_path}")
-
-
-def test_second():
-    specs = Specs(Path(__file__).parent / "test-files" / "example2.json")
-    tmp_path = get_tmp_path()
-    final = specs.get_final(tmp_path)
-    print(" \\\n".join(final.compile()))  # Smoke test
-    # Uncomment the next line to see the rendering plan graph
-    # final.view()
-    if CREATE_VIDEO:
-        final.run()
-        print(f"Written file {tmp_path}")
-
-
-def test_third():
-    specs = Specs(Path(__file__).parent / "test-files" / "example2.json")
+@pytest.mark.parametrize("json_filename", ["example.json", "example2.json"])
+def test_video_generation(json_filename):
+    specs = Specs(Path(__file__).parent / "test-files" / json_filename)
     tmp_path = get_tmp_path()
     final = specs.get_final(tmp_path)
     print(" \\\n".join(final.compile()))  # Smoke test
