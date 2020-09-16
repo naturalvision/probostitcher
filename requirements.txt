@@ -4,7 +4,7 @@
 #
 #    pip-compile
 #
-ffmpeg-python==0.2.0      # via -r requirements.in
+git+https://github.com/silviot/ffmpeg-python.git@source-node  # via -r requirements.in
 future==0.18.2            # via ffmpeg-python
 pendulum==2.1.2           # via -r requirements.in
 python-dateutil==2.8.1    # via pendulum
