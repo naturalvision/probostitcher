@@ -180,6 +180,7 @@ class Specs:
             in_video.filter("fps", fps),
             destination,
             t=self.output_period.in_seconds(),
+            vsync="vfr",
         )
 
     def _combine_tracks_hstack(self):
