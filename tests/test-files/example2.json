@@ -1,18 +1,15 @@
 {
   "inputs": [
     {
-      "filename": "1599816201-2020-09-11__11:23:21.webm",
-      "start": 1599816201990209,
+      "filename": "videoroom-1234-user-8138555146016188-1599816201990209.webm",
       "streamname": "daniel"
     },
     {
-      "filename": "1599816217-2020-09-11__11:23:37.webm",
-      "start": 1599816217956118,
+      "filename": "videoroom-1234-user-338295202680263-1599816217956118.webm",
       "streamname": "silvio"
     },
     {
-      "filename": "1599816241-2020-09-11__11:24:01.webm",
-      "start": 1599816241960255,
+      "filename": "videoroom-1234-user-7761747637808773-1599816241960255.webm",
       "streamname": "screenshare"
     }
   ],
