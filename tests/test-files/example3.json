@@ -1,0 +1,50 @@
+{
+  "inputs": [
+    {
+      "filename": "videoroom-1234-user-1906261619318266-1600260601980811.webm",
+      "streamname": "silvio-with-clap"
+    },
+    {
+      "filename": "videoroom-1234-user-2561348984276797-1600260519360732.webm",
+      "streamname": "silvio-screenshare"
+    },
+    {
+      "filename": "videoroom-1234-user-3827644829091266-1600260492928227.webm",
+      "streamname": "silvio"
+    },
+    {
+      "filename": "videoroom-1234-user-4731215766182973-1600260601852698.webm",
+      "streamname": "silvio-screenshare-with-clap"
+    },
+    {
+      "filename": "videoroom-1234-user-5266021426521020-1600260399802272.webm",
+      "start": 1600260410000000,
+      "streamname": "daniel"
+    },
+    {
+      "filename": "videoroom-1234-user-7098320872262523-1600260602068888.webm",
+      "streamname": "daniel-screenshare"
+    }
+  ],
+  "output_start": 1600260602068888,
+  "output_duration": 40,
+  "output_framerate": 10,
+  "output_size": { "width": 640, "height": 480 },
+  "milestones": [
+    {
+      "timestamp": 0,
+      "videos": [
+        {
+          "streamname": "daniel-screenshare"
+        },
+        {
+          "streamname": "daniel",
+          "x": 440,
+          "y": 360,
+          "width": 200,
+          "height": 120
+        }
+      ]
+    }
+  ]
+}
