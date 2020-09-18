@@ -15,6 +15,7 @@ default:
     - apt-get update
     - apt-get install -y ffmpeg
     - pip install -r requirements.txt
+    - cd tests/test-files && ./convert_mjr.sh && cd -
     - pip install -e .
     - pip install pytest
   script:
