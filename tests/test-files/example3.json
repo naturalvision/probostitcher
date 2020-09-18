@@ -27,7 +27,7 @@
     }
   ],
   "output_start": 1600260642000000,
-  "output_duration": 40,
+  "output_duration": 240,
   "output_framerate": 15,
   "output_size": { "width": 640, "height": 480 },
   "milestones": [

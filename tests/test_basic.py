@@ -1,6 +1,6 @@
 from pathlib import Path
-from videostitcher import Specs
-from videostitcher.specs import parse_ts
+from probostitcher import Specs
+from probostitcher.specs import parse_ts
 
 import os
 import pytest
