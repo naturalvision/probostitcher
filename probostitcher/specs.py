@@ -132,7 +132,8 @@ class Specs:
                     )["s"]
                 input_info["start_from_filename"] = int(
                     re.match(
-                        ".*-([0-9]*).(webm|opus)", input_info["filename"]
+                        ".*-([0-9]*)(-(audio|video))?.(webm|opus)",
+                        input_info["filename"],
                     ).groups()[0]
                 )
                 input_info["start"] = input_info["start_from_comment_s"]
