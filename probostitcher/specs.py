@@ -137,8 +137,8 @@ class Specs:
                     ).groups()[0]
                 )
                 input_info["start"] = input_info["start_from_comment_s"]
-                input_info["start"] = input_info["start_from_comment_u"]
                 input_info["start"] = input_info["start_from_filename"]
+                input_info["start"] = input_info["start_from_comment_u"]
             input_start = parse_ts(input_info["start"])
             input_duration = float(input_file_info["format"]["duration"])
             input_end = input_start.add(seconds=input_duration)
