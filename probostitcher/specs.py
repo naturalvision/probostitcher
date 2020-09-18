@@ -212,15 +212,11 @@ class Specs:
 
 def scale_to(input, width, height):
     """Scale the given video and add black bands to make it exactly the desired size"""
-    return (
-        input.filter(
-            "scale",
-            size=f"{width}:{height}",
-            force_original_aspect_ratio="decrease",
-        )
-        .filter("pad", width, height, "(ow-iw)/2", "(oh-ih)/2")
-        .filter("setsar", "1", "1")
-    )
+    return input.filter(
+        "scale",
+        size=f"{width}:{height}",
+        force_original_aspect_ratio="decrease",
+    ).filter("pad", width, height, "(ow-iw)/2", "(oh-ih)/2")
 
 
 def adjust_video_track(
