@@ -6,6 +6,7 @@ from pendulum import from_timestamp
 from pendulum import Period
 from typing import Dict
 from typing import List
+from typing import Optional
 
 import ffmpeg
 import json
@@ -278,18 +279,14 @@ def parse_ts(ts: int) -> DateTime:
     return from_timestamp(ts / 1000 ** 2)
 
 
-def overlaps(p1: Period, p2: Period) -> bool:
-    """Return True if the two passed periods overlap, False otherwise"""
-    if p2.start <= p1.start < p2.end:
-        # p1 starts during p2
-        return True
-    if p2.start < p1.end <= p2.end:
-        # p1 ends during p2
-        return True
-    if p2.start <= p1.start and p2.end >= p1.end:
-        # p1 starts before and ends after p2
-        return True
-    return False
+def overlaps(p1: Period, p2: Period) -> Optional[Period]:
+    """Return the overlapping period of the given ones.
+    If there is no overlap return None"""
+    start = max(p1.start, p2.start)
+    end = min(p1.end, p2.end)
+    if end < start:
+        return None
+    return Period(start=start, end=end)
 
 
 def has_audio(input):
