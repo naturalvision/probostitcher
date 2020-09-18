@@ -26,7 +26,8 @@
     },
     {
       "filename": "videoroom-1234-user-5266021426521020-1600260399802272-video.webm",
-      "streamname": "daniel-video"
+      "streamname": "daniel-video",
+      "start": 1600260409802272
     },
     {
       "filename": "videoroom-1234-user-5266021426521020-1600260399802272-audio.opus",
@@ -39,7 +40,7 @@
   ],
   "output_start": 1600260535000000,
   "output_duration": 240,
-  "output_framerate": 5,
+  "output_framerate": 15,
   "output_size": { "width": 640, "height": 480 },
   "milestones": [
     {
@@ -73,13 +74,6 @@
         {
           "streamname": "daniel-video",
           "x": 440,
-          "y": 360,
-          "width": 200,
-          "height": 120
-        },
-        {
-          "streamname": "silvio-video",
-          "x": 240,
           "y": 360,
           "width": 200,
           "height": 120
