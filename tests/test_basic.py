@@ -4,7 +4,6 @@ from probostitcher.specs import parse_ts
 
 import os
 import pytest
-import shlex
 import tempfile
 
 
@@ -23,7 +22,7 @@ def disabled_test_start_offsets():
     table.add_column("Comment U")
     table.add_column("Filename")
 
-    specs = Specs(Path(__file__).parent / "test-files" / "example2.json")
+    specs = Specs(Path(__file__).parent / "test-files" / "example3.json")
     for input in specs.config["inputs"]:
         start_from_comment_s = parse_ts(input["start_from_comment_s"])
         start_from_comment_u = parse_ts(input["start_from_comment_u"])
@@ -43,13 +42,9 @@ def disabled_test_start_offsets():
 )
 def test_video_generation(json_filename):
     specs = Specs(Path(__file__).parent / "test-files" / json_filename)
-    tmp_path = get_tmp_path()
-    final = specs.get_final(tmp_path)
-    print(" \\\n".join(map(shlex.quote, final.compile())))  # Smoke test
-    # Uncomment the next line to see the rendering plan graph
-    # final.view()
     if CREATE_VIDEO:
-        final.run()
+        tmp_path = get_tmp_path()
+        specs.render(tmp_path)
         print(f"Written file {tmp_path}")
 
 

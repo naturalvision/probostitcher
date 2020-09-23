@@ -1,17 +1,17 @@
 from ffmpeg.nodes import FilterableStream
-from ffmpeg.nodes import OutputStream
 from pathlib import Path
 from pendulum import DateTime
-from pendulum import from_timestamp
 from pendulum import Period
 from typing import Dict
+from typing import Iterator
 from typing import List
 from typing import Optional
 
 import ffmpeg
 import json
-import re
+import os
 import sys
+import tempfile
 
 
 class Specs:
@@ -21,10 +21,12 @@ class Specs:
 
     #: A dictionary read (and slightly augmented/changed) from the config file
     config: Dict
+    #: A dictionary containing info about input track files, extracted from self.config["inputs"]
+    inputs: Dict[str, Dict[str, str]]
+    #: A dictionary containing ffmpeg analysis of the given input
+    inputs_infos: Dict[str, Dict]
     #: Pendulum Period indicating the time span the output should show
     output_period: Period
-    #: Tracks needed to assemble the output
-    video_tracks: Dict[str, FilterableStream]
     #: Chunks that will make up the final video
     video_chunks: List[FilterableStream]
     #: The audio track of the output
@@ -40,9 +42,11 @@ class Specs:
             self.config["output_size"]["width"],
             self.config["output_size"]["height"],
         )
+        self.inputs = {el["streamname"]: el for el in self.config["inputs"]}
         self.output_period = output_end - output_start
-        self.prepare_tracks()
+        self.analyze_files()
         self.prepare_chunks()
+        self.prepare_audio_track()
 
     def prepare_chunks(self):
         assert self.config["milestones"][0]["timestamp"] == 0
@@ -64,17 +68,8 @@ class Specs:
             chunk = None
             for video_specs in milestone["videos"]:
                 # Trim/resize the videos of this chunk
-                track = self.video_tracks[video_specs["streamname"]]
-                if not is_last:
-                    # If some later milestones exist they will want a copy of this track
-                    # So we split it, use one of the split result and store the other for later use
-                    split_track = track.split()
-                    track = split_track[0]
-                    self.video_tracks[video_specs["streamname"]] = split_track[1]
-                track = track.trim(start=start, end=end).filter(
-                    "setpts", "PTS-STARTPTS"
-                )
-
+                period = Period(start=self.ts(start), end=self.ts(end))
+                track = self.trim_to_chunk(video_specs["streamname"], period)
                 # Resize the video
                 width, height = (
                     video_specs.get("width", default_width),
@@ -86,16 +81,49 @@ class Specs:
                     chunk = track
                 else:
                     x, y = video_specs.get("x", 0), video_specs.get("y", 0)
+                    track = track.filter("setpts", "PTS-STARTPTS")
                     chunk = chunk.overlay(track, x=x, y=y)
             self.video_chunks.append(chunk)
 
-    def prepare_tracks(self):
-        """Prepare the input tracks needed to assemble the output.
-        Store the result in self.video_tracks and self.audio_track.
-        The audio track is final. The video tracks will be used to assemble chunks.
+    def trim_to_chunk(self, streamname: str, period: Period) -> FilterableStream:
+        """Trim the given streamname to match the given Period.
+        Black screen will be introduced if the given period is not fully covered by the given input.
         """
-        self.video_tracks = {}
-        audio_streams = []
+        filename = self.absolute_path(self.inputs[streamname]["filename"])
+        input = ffmpeg.input(filename)
+        input_info = self.input_infos[streamname]
+        input_period = get_input_period(input_info)
+        width = input_info["streams"][0]["width"]
+        height = input_info["streams"][0]["height"]
+        if input_period.start < period.start:
+            # We need to trim our input: it starts earlier than needed
+            input = input.trim(
+                start=duration(period.start - input_period.start)
+            ).filter("setpts", "PTS-STARTPTS")
+        elif input_period.start > period.start:
+            # We need to add black to the beginning
+            padding_duration = input_period.start - period.start
+            padding_duration = duration(padding_duration)
+            padding = (
+                ffmpeg.source("testsrc", s=f"{width}x{height}")
+                .trim(end=f"{padding_duration:f}")
+                .filter("reverse")
+            )
+            input = ffmpeg.concat(padding, input)
+
+        if input_period.end > period.end:
+            # We need to trim the input: it ends past our desired point in time
+            input = input.trim(end=duration(period))
+        elif input_period.end < period.end:
+            # TODO: We need to append padding to the end of the video
+            # otherwise the last frame will be repeated
+            pass
+        fps = self.config.get("output_framerate", 25)
+        return input.filter("fps", fps)
+
+    def analyze_files(self):
+        """Run ffprobe on all inputs and store the information in self.infos"""
+        self.input_infos = {}
         for input_info in self.config["inputs"]:
             # Convert file paths to absolute in case they're relative
             # TODO we can support HTTP URLs by prepending async:cache
@@ -104,60 +132,17 @@ class Specs:
             print(f"Analyzing {input_info['filename']}", file=sys.stderr)
             # Use ffprobe to get more info about streams
             input_file_info = ffmpeg.probe(input_info["filename"])
-            if "start" not in input_info:
-                info_from_stream_comment = [
-                    el["tags"]["COMMENT"]
-                    for el in input_file_info["streams"]
-                    if "COMMENT" in el.get("tags", {})
-                ]
-                info_from_stream_comment = info_from_stream_comment or [
-                    el["tags"]["comment"]
-                    for el in input_file_info["streams"]
-                    if "comment" in el.get("tags", {})
-                ]
-                if info_from_stream_comment:
-                    input_info["start_from_comment_u"] = json.loads(
-                        info_from_stream_comment[0]
-                    )["u"]
-                    input_info["start_from_comment_s"] = json.loads(
-                        info_from_stream_comment[0]
-                    )["s"]
-                else:
-                    # Get the input from the "format" key
-                    input_info["start_from_comment_u"] = json.loads(
-                        input_file_info["format"]["tags"]["COMMENT"]
-                    )["u"]
-                    input_info["start_from_comment_s"] = json.loads(
-                        input_file_info["format"]["tags"]["COMMENT"]
-                    )["s"]
-                input_info["start_from_filename"] = int(
-                    re.match(
-                        ".*-([0-9]*)(-(audio|video))?.(webm|opus)",
-                        input_info["filename"],
-                    ).groups()[0]
-                )
-                input_info["start"] = input_info["start_from_comment_s"]
-                input_info["start"] = input_info["start_from_filename"]
-                input_info["start"] = input_info["start_from_comment_u"]
-            input_start = parse_ts(input_info["start"])
-            input_duration = float(input_file_info["format"]["duration"])
-            input_end = input_start.add(seconds=input_duration)
-            input_period = input_end - input_start
-            if overlaps(self.output_period, input_period):
-                if has_video(input_file_info):
-                    width, height = [
-                        (el["width"], el["height"])
-                        for el in input_file_info["streams"]
-                        if "width" in el
-                    ][0]
-                    adjusted_video = adjust_video_track(
-                        input_info, self.output_period, self.width, self.height
-                    )
-                    self.video_tracks[input_info["streamname"]] = adjusted_video
+            self.input_infos[input_info["streamname"]] = input_file_info
 
-                if has_audio(input_file_info["streams"]):
+    def prepare_audio_track(self):
+        audio_streams = []
+        for input_specs in self.config["inputs"]:
+            input_info = self.input_infos[input_specs["streamname"]]
+            input_period = get_input_period(input_info)
+            if overlaps(self.output_period, input_period):
+                if has_audio(input_info["streams"]):
                     audio_streams.append(
-                        adjust_audio_track(input_info, self.output_period)
+                        adjust_audio_track(input_specs, input_info, self.output_period)
                     )
         self.audio_track = ffmpeg.filter(
             audio_streams, "amix", inputs=len(audio_streams)
@@ -170,44 +155,83 @@ class Specs:
         return str(self.filepath.parent / filename)
 
     def render(self, destination: str):
-        """Render the video as specced, saving it in the path given as `destination`."""
-        self.get_final(destination).run()
+        """Render the final video in the file specified by `destination`.
+        First renders all chunks. Then concatenates the chunks and mixes in audio.
+        """
+        final_video_path = get_tmp_path()
+        rendered_chunks = self.render_videos(final_video_path)
+        video = ffmpeg.concat(*map(ffmpeg.input, rendered_chunks))
+        final = self.audio_track.output(
+            video, destination, t=self.output_period.in_seconds()
+        )
+        final.run()
 
-    def get_final(self, destination: str) -> OutputStream:
-        """Returns an OutputStream object representing the work needed to produce the
-        final output. Useful methods on that object are `view()` (shows a graphical
-        representation of the video processing graph) and `run()` (actually produces the file)"""
-        # in_video = self._combine_tracks_hstack()  # Uncomment to debug and see all videos side by side
-        in_video = ffmpeg.concat(*self.video_chunks)
-        fps = self.config.get("output_framerate", 25)
-        return self.audio_track.output(
-            in_video.filter("fps", fps),
-            destination,
-            t=self.output_period.in_seconds(),
-            vsync="cfr",  # Frames will be duplicated and dropped to achieve exactly the requested constant frame rate
-            copytb=1,  # Use the demuxer timebase.
+    def render_videos(self, destination: str) -> List[str]:
+        """Render the video chunks as specced, saving it to temporary files and returning them."""
+        rendered_chunks = []
+        base_filename = get_tmp_path("")
+        for i, chunk in enumerate(self.video_chunks):
+            filename = base_filename + f"-chunk{i}.webm"
+            rendered_chunks.append(filename)
+            todo = chunk.output(
+                filename,
+                vsync="cfr",  # Frames will be duplicated and dropped to achieve exactly the requested constant frame rate
+                copytb=1,  # Use the demuxer timebase.
+            )
+            todo.run()
+        return rendered_chunks
+
+    def __len__(self) -> int:
+        """Returns the number of chunks for this specs"""
+        return len(self.video_chunks)
+
+    def __iter__(self) -> Iterator:
+        return iter(self.video_chunks)
+
+    def __get__(self, index: int) -> FilterableStream:
+        """Returns an OutputStream object representing the chunk identified by `index`."""
+        return self.video_chunks[index]
+
+    def ts(self, seconds: int) -> DateTime:
+        """Convert a value in seconds to a DateTime object.
+        Uses the output_start as t0.
+        """
+        return DateTime.fromtimestamp(
+            (self.config["output_start"] + seconds * 1000 ** 2) / 1000 ** 2
         )
 
-    def _combine_tracks_hstack(self):
-        """Utility/debug function to get all tracks next to each other using the hstack filter"""
-        width, height = (
-            self.config["output_size"]["width"],
-            self.config["output_size"]["height"],
-        )
-        size = "{width}:{height}".format(**self.config["output_size"])
 
-        def scale_video(video):
-            return video.filter(
-                "scale",
-                size=size,
-                force_original_aspect_ratio="decrease",
-            ).filter("pad", width, height, "(ow-iw)/2", "(oh-ih)/2")
+def duration(period: Period) -> float:
+    """GIven a moment period, return a float representing its duration in (fractional) seconds"""
+    return (period.in_seconds() * 1000 ** 2 + period.microseconds) / 1000 ** 2
 
-        return ffmpeg.filter(
-            list(map(scale_video, self.video_tracks.values())),
-            "hstack",
-            inputs=len(self.video_tracks),
-        )
+
+def get_input_start(input_file_info: Dict) -> int:
+    """Given a dict as returned by ffprobe, return the start time in microseconds since Epoch"""
+    info_from_stream_comment = [
+        el["tags"]["COMMENT"]
+        for el in input_file_info["streams"]
+        if "COMMENT" in el.get("tags", {})
+    ]
+    info_from_stream_comment = info_from_stream_comment or [
+        el["tags"]["comment"]
+        for el in input_file_info["streams"]
+        if "comment" in el.get("tags", {})
+    ]
+    if info_from_stream_comment:
+        start_from_comment_s = json.loads(info_from_stream_comment[0])["u"]
+    else:
+        # Get the input from the "format" key
+        start_from_comment_s = json.loads(input_file_info["format"]["tags"]["COMMENT"])[
+            "u"
+        ]
+    return int(start_from_comment_s)
+
+
+def get_input_period(input_file_info: Dict) -> Period:
+    start = DateTime.fromtimestamp(get_input_start(input_file_info) / 1000 ** 2)
+    end = start.add(seconds=float(input_file_info["format"]["duration"]))
+    return Period(start=start, end=end)
 
 
 def scale_to(input, width, height):
@@ -241,27 +265,24 @@ def adjust_video_track(
         fontsize="20",
     )
     if stream_delay > 0:
-        input = input.filter("trim", start=stream_delay).filter(
-            "setpts", "PTS-STARTPTS"
-        )
+        input = input.filter("trim", start=stream_delay)
     elif stream_delay < 0:
         # We should add black frames for `stream_delay` time: first we create the video to prepend
         intro = scale_to(
             ffmpeg.source("testsrc").trim(end=abs(stream_delay)), width, height
         ).filter("reverse")
         input = ffmpeg.concat(intro, scale_to(input, width, height))
-        input = input.filter("setpts", "PTS-STARTPTS")
     return input
 
 
 def adjust_audio_track(
-    input_info: Dict[str, str], output_period: Period
+    input_specs: Dict, input_info: Dict, output_period: Period
 ) -> FilterableStream:
     """Adjust an audio track to match desired output times"""
     stream_delay = (
-        output_period.start - parse_ts(int(input_info["start"]))
-    ).in_seconds()
-    audio = ffmpeg.input(input_info["filename"]).audio
+        output_period.start.timestamp() - get_input_start(input_info) / 1000 ** 2
+    )
+    audio = ffmpeg.input(input_specs["filename"]).audio
     if stream_delay > 0:
         return audio.filter("atrim", start=stream_delay).filter(
             "asetpts", "PTS-STARTPTS"
@@ -273,7 +294,7 @@ def adjust_audio_track(
 
 def parse_ts(ts: int) -> DateTime:
     """Returns a Pendulum datetime parsed from the passed datetime from epoch in microseconds."""
-    return from_timestamp(ts / 1000 ** 2)
+    return DateTime.fromtimestamp(ts / 1000 ** 2)
 
 
 def overlaps(p1: Period, p2: Period) -> Optional[Period]:
@@ -292,3 +313,10 @@ def has_audio(input):
 
 def has_video(input):
     return any(el.get("coded_width") for el in input["streams"])
+
+
+def get_tmp_path(extension=".webm"):
+    fh, tmp_path = tempfile.mkstemp(extension)
+    os.fdopen(fh).close()
+    os.unlink(tmp_path)
+    return tmp_path
