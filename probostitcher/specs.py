@@ -10,6 +10,7 @@ from typing import Optional
 import ffmpeg
 import json
 import os
+import subprocess
 import sys
 import tempfile
 
@@ -165,11 +166,28 @@ class Specs:
         """Render the final video in the file specified by `destination`.
         First renders all chunks. Then concatenates the chunks and mixes in audio.
         """
-        final_video_path = get_tmp_path()
+        final_video_path = get_tmp_path("-all.webm")
         rendered_chunks = self.render_videos(final_video_path)
-        video = ffmpeg.concat(*map(ffmpeg.input, rendered_chunks))
+        txt_filename = get_tmp_path("-file-list.txt")
+        with open(txt_filename, "w") as fh:
+            for chunk_filename in rendered_chunks:
+                fh.write(f"file '{chunk_filename}'\n")
+        command = [
+            "ffmpeg",
+            "-safe",
+            "0",
+            "-f",
+            "concat",
+            "-i",
+            txt_filename,
+            "-c",
+            "copy",
+            final_video_path,
+        ]
+        self.print(subprocess.check_output(command).decode("utf-8"))
+        video = ffmpeg.input(final_video_path)
         final = self.audio_track.output(
-            video, destination, t=self.output_period.in_seconds()
+            video, destination, t=self.output_period.in_seconds(), vcodec="copy"
         )
         final.run()
 
