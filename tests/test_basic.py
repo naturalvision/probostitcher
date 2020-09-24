@@ -41,7 +41,7 @@ def disabled_test_start_offsets():
     "json_filename", ["example.json", "example2.json", "example3.json"]
 )
 def test_video_generation(json_filename):
-    specs = Specs(Path(__file__).parent / "test-files" / json_filename)
+    specs = Specs(Path(__file__).parent / "test-files" / json_filename, debug=True)
     if CREATE_VIDEO:
         tmp_path = get_tmp_path()
         specs.render(tmp_path)

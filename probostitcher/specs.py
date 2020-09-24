@@ -31,9 +31,12 @@ class Specs:
     video_chunks: List[FilterableStream]
     #: The audio track of the output
     audio_track: FilterableStream
+    #: If True debug infos will be printed out during conversion
+    debug: bool
 
-    def __init__(self, filepath: str):
+    def __init__(self, filepath: str, debug=False):
         self.filepath = Path(filepath)
+        self.debug = debug
         with open(filepath) as fh:
             self.config = json.load(fh)
         output_start = parse_ts(int(self.config["output_start"]))
@@ -121,6 +124,10 @@ class Specs:
         fps = self.config.get("output_framerate", 25)
         return input.filter("fps", fps)
 
+    def print(self, message: str):
+        if self.debug:
+            print(message, file=sys.stderr)
+
     def analyze_files(self):
         """Run ffprobe on all inputs and store the information in self.infos"""
         self.input_infos = {}
@@ -129,7 +136,7 @@ class Specs:
             # TODO we can support HTTP URLs by prepending async:cache
             # see https://ffmpeg.org/ffmpeg-protocols.html#async
             input_info["filename"] = self.absolute_path(input_info["filename"])
-            print(f"Analyzing {input_info['filename']}", file=sys.stderr)
+            self.print(f"Analyzing {input_info['filename']}")
             # Use ffprobe to get more info about streams
             input_file_info = ffmpeg.probe(input_info["filename"])
             self.input_infos[input_info["streamname"]] = input_file_info
