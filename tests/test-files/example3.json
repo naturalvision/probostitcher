@@ -37,9 +37,9 @@
       "streamname": "daniel-screenshare"
     }
   ],
-  "output_start": 1600260555000000,
-  "output_duration": 60,
-  "output_framerate": 5,
+  "output_start": 1600260410169433,
+  "output_duration": 180,
+  "output_framerate": 10,
   "output_size": { "width": 640, "height": 480 },
   "milestones": [
     {
@@ -47,24 +47,17 @@
       "videos": [
         {
           "streamname": "daniel-video"
-        },
-        {
-          "streamname": "silvio-video",
-          "x": 240,
-          "y": 360,
-          "width": 200,
-          "height": 120
         }
       ]
     },
     {
-      "timestamp": 46,
+      "timestamp": 84,
       "videos": [
         {
-          "streamname": "daniel-screenshare"
+          "streamname": "daniel-video"
         },
         {
-          "streamname": "daniel-video",
+          "streamname": "silvio-video",
           "x": 440,
           "y": 360,
           "width": 200,
@@ -73,10 +66,32 @@
       ]
     },
     {
-      "timestamp": 53,
+      "timestamp": 110,
       "videos": [
         {
-          "streamname": "daniel-screenshare"
+          "streamname": "silvio-screenshare"
+        },
+        {
+          "streamname": "silvio-video",
+          "x": 440,
+          "y": 360,
+          "width": 200,
+          "height": 120
+        },
+        {
+          "streamname": "daniel-video",
+          "x": 240,
+          "y": 360,
+          "width": 200,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "timestamp": 171,
+      "videos": [
+        {
+          "streamname": "daniel-video"
         }
       ]
     }
