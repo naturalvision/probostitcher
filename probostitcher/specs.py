@@ -9,6 +9,7 @@ from typing import Optional
 
 import ffmpeg
 import json
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -251,7 +252,12 @@ class Specs:
                 vsync="cfr",  # Frames will be duplicated and dropped to achieve exactly the requested constant frame rate
                 copytb=1,  # Use the demuxer timebase.
             )
-            todo.run()
+            try:
+                todo.run()
+            except ffmpeg._run.Error:
+                print("Error running")
+                print(" ".join(map(shlex.quote, todo.compile())))
+                raise
 
     def __len__(self) -> int:
         """Returns the number of chunks for this specs"""
