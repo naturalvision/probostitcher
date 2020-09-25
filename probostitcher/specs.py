@@ -119,6 +119,19 @@ class Specs:
         input_info = self.input_infos[streamname]
         input_period = get_input_period(input_info)
 
+        width = input_info["streams"][0]["width"]
+        height = input_info["streams"][0]["height"]
+        size = f"{width}x{height}"
+        # XXX This will possibly unnecessarily downscale a video
+        # It's necessary because the size ffprobe reports is the one detected at the start of the video
+        # Ideally we should check all frame sizes and use the biggest one here
+        # That we instead of losing precious information (image detail) we would be wasting some CPU cycles
+        input = input.filter(
+            "scale",
+            size=f"{width}:{height}",
+            force_original_aspect_ratio="decrease",
+        )
+
         if self.debug:
             # Add timestamp at the top
             video_begin = input_period.start.timestamp()
@@ -133,9 +146,6 @@ class Specs:
                 fontsize="20",
             )
 
-        width = input_info["streams"][0]["width"]
-        height = input_info["streams"][0]["height"]
-        size = f"{width}x{height}"
         if input_period.start < period.start:
             # We need to trim our input: it starts earlier than needed
             input = input.trim(
@@ -164,15 +174,7 @@ class Specs:
             after_padding = ffmpeg.source(
                 "color", color="black", size=size, duration=after_padding_duration
             )
-            # XXX This will possibly unnecessarily downscale a video
-            # It's necessary because the size ffprobe reports is the one detected at the start of the video
-            # Ideally we should check all frame sizes and use the biggest one here
-            # That we instead of losing precious information (image detail) we would be wasting some CPU cycles
-            input = input.filter(
-                "scale",
-                size=f"{width}:{height}",
-                force_original_aspect_ratio="decrease",
-            ).concat(after_padding)
+            input = input.concat(after_padding)
         fps = self.config.get("output_framerate", 25)
         return input.filter("fps", fps)
 
