@@ -134,6 +134,7 @@ class Specs:
 
         width = input_info["streams"][0]["width"]
         height = input_info["streams"][0]["height"]
+        size = f"{width}x{height}"
         if input_period.start < period.start:
             # We need to trim our input: it starts earlier than needed
             input = input.trim(
@@ -143,11 +144,9 @@ class Specs:
             # We need to add black to the beginning
             padding_duration = input_period.start - period.start
             padding_duration = duration(padding_duration)
-            padding = (
-                ffmpeg.source("testsrc", s=f"{width}x{height}")
-                .trim(end=f"{padding_duration:f}")
-                .filter("reverse")
-            )
+            padding = ffmpeg.source(
+                "testsrc", size=size, duration=f"{padding_duration:f}"
+            ).filter("reverse")
             input = ffmpeg.concat(padding, input)
 
         if input_period.end > period.end:
@@ -156,7 +155,23 @@ class Specs:
         elif input_period.end < period.end:
             # TODO: We need to append padding to the end of the video
             # otherwise the last frame will be repeated
-            pass
+            after_padding_period = period.end - input_period.end
+            after_padding_duration = (
+                after_padding_period.in_seconds()
+                + after_padding_period.microseconds / 1000 ** 2
+            )
+            after_padding = ffmpeg.source(
+                "color", color="black", size=size, duration=after_padding_duration
+            )
+            # XXX This will possibly unnecessarily downscale a video
+            # It's necessary because the size ffprobe reports is the one detected at the start of the video
+            # Ideally we should check all frame sizes and use the biggest one here
+            # That we instead of losing precious information (image detail) we would be wasting some CPU cycles
+            input = input.filter(
+                "scale",
+                size=f"{width}:{height}",
+                force_original_aspect_ratio="decrease",
+            ).concat(after_padding)
         fps = self.config.get("output_framerate", 25)
         return input.filter("fps", fps)
 
@@ -299,30 +314,6 @@ def scale_to(input, width, height):
         size=f"{width}:{height}",
         force_original_aspect_ratio="decrease",
     ).filter("pad", width, height, "(ow-iw)/2", "(oh-ih)/2")
-
-
-def adjust_video_track(
-    input_info: Dict[str, str], output_period: Period, width: int, height: int
-) -> FilterableStream:
-    """Adjust a track so that it has the same duration as the output period.
-    Size is needed to create black padding video of the right size"""
-    # stream_delay is the length of time between the start of this stream and te start of the output
-    # A positive value means this input should be trimmed, and starts as the output starts.
-    # A negative value means this input should be delayed, and starts at a later point than the main output.
-    stream_delay = (
-        output_period.start - parse_ts(int(input_info["start"]))
-    ).in_seconds()
-    input = ffmpeg.input(input_info["filename"])
-    if stream_delay > 0:
-        input = input.filter("trim", start=stream_delay)
-    elif stream_delay < 0:
-        # We should add black frames for `stream_delay` time: first we create the video to prepend
-        intro = scale_to(
-            ffmpeg.source("testsrc").trim(end=abs(stream_delay)), width, height
-        ).filter("reverse")
-        input = ffmpeg.concat(intro, scale_to(input, width, height))
-    # TODO: add black video to the end if the video is too short
-    return input
 
 
 def adjust_audio_track(
