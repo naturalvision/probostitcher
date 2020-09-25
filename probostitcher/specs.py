@@ -9,7 +9,6 @@ from typing import Optional
 
 import ffmpeg
 import json
-import os
 import subprocess
 import sys
 import tempfile
@@ -34,8 +33,10 @@ class Specs:
     audio_track: FilterableStream
     #: If True debug infos will be printed out during conversion
     debug: bool
+    #: Path to the directory where temporary files are stored
+    tmp_dir: Path
 
-    def __init__(self, filepath: str, debug=False):
+    def __init__(self, filepath: str, debug=False, cleanup=True):
         self.filepath = Path(filepath)
         self.debug = debug
         with open(filepath) as fh:
@@ -51,6 +52,11 @@ class Specs:
         self.analyze_files()
         self.prepare_chunks()
         self.prepare_audio_track()
+        if cleanup:
+            self._tmp_dir = tempfile.TemporaryDirectory(prefix="probostitcher-")
+            self.tmp_dir = Path(self._tmp_dir.name)
+        else:
+            self.tmp_dir = Path(tempfile.mkdtemp(prefix="probostitcher-"))
 
     def prepare_chunks(self):
         assert self.config["milestones"][0]["timestamp"] == 0
@@ -73,7 +79,7 @@ class Specs:
             for video_specs in milestone["videos"]:
                 # Trim/resize the videos of this chunk
                 period = Period(start=self.ts(start), end=self.ts(end))
-                track = self.trim_to_chunk(video_specs["streamname"], period)
+                track = self.trim_to_period(video_specs["streamname"], period)
                 # Resize the video
                 width, height = (
                     video_specs.get("width", default_width),
@@ -87,9 +93,23 @@ class Specs:
                     x, y = video_specs.get("x", 0), video_specs.get("y", 0)
                     track = track.filter("setpts", "PTS-STARTPTS")
                     chunk = chunk.overlay(track, x=x, y=y)
+            if self.debug:
+                video_begin = self.config["output_start"] / 1000 ** 2
+                chunk = chunk.filter(
+                    "drawtext",
+                    fontfile="FreeSans.ttf",
+                    fontcolor="white",
+                    shadowcolor="black",
+                    shadowx="1",
+                    shadowy="2",
+                    text="%{pts:gmtime:" + str(video_begin) + "}",
+                    fontsize="20",
+                    x="0",
+                    y="h-th",
+                )
             self.video_chunks.append(chunk)
 
-    def trim_to_chunk(self, streamname: str, period: Period) -> FilterableStream:
+    def trim_to_period(self, streamname: str, period: Period) -> FilterableStream:
         """Trim the given streamname to match the given Period.
         Black screen will be introduced if the given period is not fully covered by the given input.
         """
@@ -97,6 +117,21 @@ class Specs:
         input = ffmpeg.input(filename)
         input_info = self.input_infos[streamname]
         input_period = get_input_period(input_info)
+
+        if self.debug:
+            # Add timestamp at the top
+            video_begin = input_period.start.timestamp()
+            input = input.filter(
+                "drawtext",
+                fontfile="FreeSerif.ttf",
+                fontcolor="white",
+                shadowcolor="black",
+                shadowx="1",
+                shadowy="2",
+                text="%{pts:gmtime:" + str(video_begin) + "}",
+                fontsize="20",
+            )
+
         width = input_info["streams"][0]["width"]
         height = input_info["streams"][0]["height"]
         if input_period.start < period.start:
@@ -166,12 +201,12 @@ class Specs:
         """Render the final video in the file specified by `destination`.
         First renders all chunks. Then concatenates the chunks and mixes in audio.
         """
-        final_video_path = get_tmp_path("-all.webm")
-        rendered_chunks = self.render_videos(final_video_path)
-        txt_filename = get_tmp_path("-file-list.txt")
+        final_video_path = str(self.tmp_dir / "final.webm")
+        self.render_videos(final_video_path)
+        txt_filename = str(self.tmp_dir / "chunk-list.txt")
         with open(txt_filename, "w") as fh:
-            for chunk_filename in rendered_chunks:
-                fh.write(f"file '{chunk_filename}'\n")
+            for i in range(len(self.video_chunks)):
+                fh.write(f"file {self.tmp_dir}/chunk-'{i}.webm'\n")
         command = [
             "ffmpeg",
             "-safe",
@@ -191,20 +226,17 @@ class Specs:
         )
         final.run()
 
-    def render_videos(self, destination: str) -> List[str]:
+    def render_videos(self, destination: str):
         """Render the video chunks as specced, saving it to temporary files and returning them."""
-        rendered_chunks = []
-        base_filename = get_tmp_path("")
+        base_filename = self.tmp_dir / "chunk-"
         for i, chunk in enumerate(self.video_chunks):
-            filename = base_filename + f"-chunk{i}.webm"
-            rendered_chunks.append(filename)
+            filename = str(base_filename) + f"{i}.webm"
             todo = chunk.output(
                 filename,
                 vsync="cfr",  # Frames will be duplicated and dropped to achieve exactly the requested constant frame rate
                 copytb=1,  # Use the demuxer timebase.
             )
             todo.run()
-        return rendered_chunks
 
     def __len__(self) -> int:
         """Returns the number of chunks for this specs"""
@@ -254,6 +286,7 @@ def get_input_start(input_file_info: Dict) -> int:
 
 
 def get_input_period(input_file_info: Dict) -> Period:
+    """Given an ffprobe generated info dict, return a Period object."""
     start = DateTime.fromtimestamp(get_input_start(input_file_info) / 1000 ** 2)
     end = start.add(seconds=float(input_file_info["format"]["duration"]))
     return Period(start=start, end=end)
@@ -280,15 +313,6 @@ def adjust_video_track(
         output_period.start - parse_ts(int(input_info["start"]))
     ).in_seconds()
     input = ffmpeg.input(input_info["filename"])
-    video_begin = int(input_info["start"]) / 1000 ** 2
-    # Burn in timecode
-    input = input.filter(
-        "drawtext",
-        fontfile="FreeSerif.ttf",
-        fontcolor="white",
-        text="%{pts:gmtime:" + str(video_begin) + "}",
-        fontsize="20",
-    )
     if stream_delay > 0:
         input = input.filter("trim", start=stream_delay)
     elif stream_delay < 0:
@@ -297,6 +321,7 @@ def adjust_video_track(
             ffmpeg.source("testsrc").trim(end=abs(stream_delay)), width, height
         ).filter("reverse")
         input = ffmpeg.concat(intro, scale_to(input, width, height))
+    # TODO: add black video to the end if the video is too short
     return input
 
 
@@ -338,10 +363,3 @@ def has_audio(input):
 
 def has_video(input):
     return any(el.get("coded_width") for el in input["streams"])
-
-
-def get_tmp_path(extension=".webm"):
-    fh, tmp_path = tempfile.mkstemp(extension)
-    os.fdopen(fh).close()
-    os.unlink(tmp_path)
-    return tmp_path
