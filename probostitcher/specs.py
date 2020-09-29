@@ -1,4 +1,5 @@
 from ffmpeg.nodes import FilterableStream
+from multiprocessing import Pool
 from pathlib import Path
 from pendulum import DateTime
 from pendulum import Period
@@ -36,10 +37,19 @@ class Specs:
     debug: bool
     #: Path to the directory where temporary files are stored
     tmp_dir: Path
+    #: Number of ffmpeg processes to run in parallel
+    parallelism: int
 
-    def __init__(self, filepath: str, debug=False, cleanup=True):
+    def __init__(
+        self,
+        filepath: str,
+        debug: bool = False,
+        cleanup: bool = True,
+        parallelism: int = 1,
+    ):
         self.filepath = Path(filepath)
         self.debug = debug
+        self.parallelism = parallelism
         with open(filepath) as fh:
             self.config = json.load(fh)
         output_start = parse_ts(int(self.config["output_start"]))
@@ -96,6 +106,7 @@ class Specs:
                     chunk = chunk.overlay(track, x=x, y=y)
             if self.debug:
                 video_begin = self.config["output_start"] / 1000 ** 2
+                video_begin += milestone["timestamp"]
                 chunk = chunk.filter(
                     "drawtext",
                     fontfile="FreeSans.ttf",
@@ -247,6 +258,9 @@ class Specs:
     def render_videos(self, destination: str):
         """Render the video chunks as specced, saving it to temporary files and returning them."""
         base_filename = self.tmp_dir / "chunk-"
+        pool = Pool(self.parallelism)
+
+        commands = []
         for i, chunk in enumerate(self.video_chunks):
             filename = str(base_filename) + f"{i}.webm"
             todo = chunk.output(
@@ -254,12 +268,10 @@ class Specs:
                 vsync="cfr",  # Frames will be duplicated and dropped to achieve exactly the requested constant frame rate
                 copytb=1,  # Use the demuxer timebase.
             )
-            try:
-                todo.run()
-            except ffmpeg._run.Error:
-                print("Error running")
-                print(" ".join(map(shlex.quote, todo.compile())))
-                raise
+            commands.append(todo.compile())
+        result = pool.map(run_ffmpeg, commands)
+        # TODO: check if any process errored out and collect error message
+        self.print(repr(result))
 
     def __len__(self) -> int:
         """Returns the number of chunks for this specs"""
@@ -279,6 +291,13 @@ class Specs:
         return DateTime.fromtimestamp(
             (self.config["output_start"] + seconds * 1000 ** 2) / 1000 ** 2
         )
+
+
+def run_ffmpeg(args: List[str]):
+    """Function to be invoked in a subprocess to in turn invoke ffmpeg."""
+    print("Running: ")
+    print(" ".join(map(shlex.quote, args)))
+    return subprocess.check_output(args)
 
 
 def duration(period: Period) -> float:

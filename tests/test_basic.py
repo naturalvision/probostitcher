@@ -42,8 +42,13 @@ def disabled_test_start_offsets():
 )
 def test_video_generation(json_filename):
     specs = Specs(
-        Path(__file__).parent / "test-files" / json_filename, debug=True, cleanup=False
+        Path(__file__).parent / "test-files" / json_filename,
+        debug=True,
+        cleanup=False,
+        parallelism=4,
     )
+    # parallelism=1 200 seconds
+    # parallelism=4 92 seconds
     if CREATE_VIDEO:
         tmp_path = get_tmp_path()
         specs.render(tmp_path)
