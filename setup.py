@@ -9,6 +9,11 @@ setup(
     author_email="silviot@gmail.com",
     license="GPL",
     install_requires=["ffmpeg-python", "pendulum"],
+    entry_points={
+        "console_scripts": [
+            "probostitcher = probostitcher.server:main",
+        ],
+    },
     packages=["probostitcher"],
     zip_safe=False,
 )

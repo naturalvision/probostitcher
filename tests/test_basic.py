@@ -3,11 +3,14 @@ from probostitcher import Specs
 from probostitcher.specs import parse_ts
 
 import os
+import probostitcher
 import pytest
 
 
 CREATE_VIDEO = os.environ.get("CREATE_VIDEO") is not None
 UPLOAD_VIDEO = os.environ.get("UPLOAD_VIDEO") is not None
+
+TEST_FILES_DIR = Path(probostitcher.__file__).parent / "test-files"
 
 
 def disabled_test_start_offsets():
@@ -21,7 +24,7 @@ def disabled_test_start_offsets():
     table.add_column("Comment U")
     table.add_column("Filename")
 
-    specs = Specs(Path(__file__).parent / "test-files" / "example3.json")
+    specs = Specs(TEST_FILES_DIR / "example3.json")
     for input in specs.config["inputs"]:
         start_from_comment_s = parse_ts(input["start_from_comment_s"])
         start_from_comment_u = parse_ts(input["start_from_comment_u"])
@@ -47,7 +50,7 @@ if "AWS_SECRET_ACCESS_KEY" in os.environ:
 )
 def test_video_generation(json_filename):
     specs = Specs(
-        Path(__file__).parent / "test-files" / json_filename,
+        TEST_FILES_DIR / json_filename,
         debug=True,
         cleanup=False,
         parallelism=4,

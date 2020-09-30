@@ -6,6 +6,7 @@
 #
 boto3==1.15.8             # via -r requirements.in
 botocore==1.18.8          # via boto3, s3transfer
+bottle==0.12.18           # via -r requirements.in
 git+https://github.com/silviot/ffmpeg-python.git@source-node  # via -r requirements.in
 future==0.18.2            # via ffmpeg-python
 jmespath==0.10.0          # via boto3, botocore

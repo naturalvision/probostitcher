@@ -10,3 +10,13 @@
   export AWS_ACCESS_KEY_ID=XXXXXXXXXXXXXXXXXXXX
   export PROBOSTITCHER_OUTPUT_BUCKET=probostitcher
   export PROBOSTITCHER_REGION=eu-central-1
+
+- Install
+
+  pip install -e .
+
+## Running
+
+Run the probostitcher http server:
+
+probostitcher
