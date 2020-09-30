@@ -12,6 +12,7 @@ setup(
     entry_points={
         "console_scripts": [
             "probostitcher = probostitcher.server:main",
+            "probostitcher-worker = probostitcher.worker:main",
         ],
     },
     packages=["probostitcher"],

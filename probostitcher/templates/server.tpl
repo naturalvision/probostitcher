@@ -13,6 +13,11 @@
   <body>
     <h1>Probostitcher</h1>
     <h2>{{! message}}</h2>
+    <ul>
+      %for error in errors:
+        <li>{{error}}</li>
+      %end
+    </ul>
     <form method="POST">
     <textarea name="specs" rows="50">{{specs_json}}</textarea>
     <input type="submit">

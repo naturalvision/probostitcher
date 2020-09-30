@@ -28,6 +28,8 @@ class Specs:
     Instantiate passing the JSON file path as the only argument to `__init__`.
     """
 
+    #: The string representing the JSON specs
+    filecontents: str
     #: A dictionary read (and slightly augmented/changed) from the config file
     config: Dict
     #: A dictionary containing info about input track files, extracted from self.config["inputs"]
@@ -51,16 +53,23 @@ class Specs:
 
     def __init__(
         self,
-        filepath: str,
+        filepath: Optional[str] = None,
+        filecontents: Optional[str] = None,
         debug: bool = False,
         cleanup: bool = True,
         parallelism: int = len(os.sched_getaffinity(0)),
     ):
-        self.filepath = Path(filepath)
+        if filepath is not None:
+            self.filepath = Path(filepath)
+            with open(filepath) as fh:
+                self.filecontents = fh.read()
+        elif filecontents is None:
+            raise ValueError("Either filepath or filecontents should be passed in")
+        else:
+            self.filecontents = filecontents
+        self.config = json.loads(self.filecontents)
         self.debug = debug
         self.parallelism = parallelism
-        with open(filepath) as fh:
-            self.config = json.load(fh)
         output_start = parse_ts(int(self.config["output_start"]))
         output_end = output_start.add(seconds=self.config["output_duration"])
         self._presign_s3_urls()
@@ -85,9 +94,8 @@ class Specs:
         This way we can make sure to not compile the same video twice.
         """
         if self._output_filename is None:
-            specs_file_contents = open(self.filepath).read().encode("utf-8")
             specs_file_hash = self._output_filename = sha512(
-                specs_file_contents
+                self.filecontents.encode("utf-8")
             ).hexdigest()
             this_file_contents = open(__file__).read().encode("utf-8")
             this_file_hash = self._output_filename = sha512(
