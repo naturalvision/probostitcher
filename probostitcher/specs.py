@@ -48,7 +48,7 @@ class Specs:
         filepath: str,
         debug: bool = False,
         cleanup: bool = True,
-        parallelism: int = 1,
+        parallelism: int = len(os.sched_getaffinity(0)),
     ):
         self.filepath = Path(filepath)
         self.debug = debug
