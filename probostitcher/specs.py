@@ -7,9 +7,12 @@ from typing import Dict
 from typing import Iterator
 from typing import List
 from typing import Optional
+from urllib.parse import urlparse
 
 import ffmpeg
 import json
+import logging
+import os
 import shlex
 import subprocess
 import sys
@@ -54,6 +57,7 @@ class Specs:
             self.config = json.load(fh)
         output_start = parse_ts(int(self.config["output_start"]))
         output_end = output_start.add(seconds=self.config["output_duration"])
+        self.presign_s3_urls()
         self.width, self.height = (
             self.config["output_size"]["width"],
             self.config["output_size"]["height"],
@@ -224,6 +228,8 @@ class Specs:
         """If the passed in file path is not absolute, convert it to absolute,
         using the directory of the JSON specs file (self.filepath) as root.
         """
+        if filename.startswith("http") or filename.startswith("/"):
+            return filename
         return str(self.filepath.parent / filename)
 
     def render(self, destination: str):
@@ -273,6 +279,11 @@ class Specs:
         # TODO: check if any process errored out and collect error message
         self.print(repr(result))
 
+    def presign_s3_urls(self):
+        for input in self.config["inputs"]:
+            if input["filename"].startswith("s3://"):
+                input["filename"] = create_presigned_url(input["filename"])
+
     def __len__(self) -> int:
         """Returns the number of chunks for this specs"""
         return len(self.video_chunks)
@@ -291,6 +302,37 @@ class Specs:
         return DateTime.fromtimestamp(
             (self.config["output_start"] + seconds * 1000 ** 2) / 1000 ** 2
         )
+
+
+def create_presigned_url(url: str, expiration: int = 3600) -> str:
+    """Generate a presigned URL to share an S3 object"""
+    from botocore.client import Config
+    from botocore.exceptions import ClientError
+
+    import boto3
+
+    parsed_url = urlparse(url)
+    region = os.environ["PROBOSTITCHER_REGION"]
+    # Generate a presigned URL for the S3 object
+    s3_client = boto3.client(
+        "s3",
+        endpoint_url=f"https://s3.{region}.amazonaws.com",
+        config=Config(signature_version="s3v4", region_name=region),
+    )
+    try:
+        response = s3_client.generate_presigned_url(
+            "get_object",
+            Params={
+                "Bucket": parsed_url.netloc,
+                "Key": parsed_url.path[1:],
+            },
+            ExpiresIn=expiration,
+        )
+    except ClientError as e:
+        logging.error(e)
+        raise
+    # The response contains the presigned URL
+    return response
 
 
 def run_ffmpeg(args: List[str]):

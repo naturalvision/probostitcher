@@ -37,8 +37,14 @@ def disabled_test_start_offsets():
     Console().print(table)
 
 
+S3_EXAMPLES = []
+# Include S3 examples only if AWS credentials are set up
+if "AWS_SECRET_ACCESS_KEY" in os.environ:
+    S3_EXAMPLES.append("example3-s3.json")
+
+
 @pytest.mark.parametrize(
-    "json_filename", ["example.json", "example2.json", "example3.json"]
+    "json_filename", ["example.json", "example2.json", "example3.json"] + S3_EXAMPLES
 )
 def test_video_generation(json_filename):
     specs = Specs(
