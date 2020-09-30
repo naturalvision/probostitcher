@@ -57,23 +57,23 @@ class Specs:
             self.config = json.load(fh)
         output_start = parse_ts(int(self.config["output_start"]))
         output_end = output_start.add(seconds=self.config["output_duration"])
-        self.presign_s3_urls()
+        self._presign_s3_urls()
         self.width, self.height = (
             self.config["output_size"]["width"],
             self.config["output_size"]["height"],
         )
         self.inputs = {el["streamname"]: el for el in self.config["inputs"]}
         self.output_period = output_end - output_start
-        self.analyze_files()
-        self.prepare_chunks()
-        self.prepare_audio_track()
+        self._analyze_files()
+        self._prepare_chunks()
+        self._prepare_audio_track()
         if cleanup:
-            self._tmp_dir = tempfile.TemporaryDirectory(prefix="probostitcher-")
-            self.tmp_dir = Path(self._tmp_dir.name)
+            self.__tmp_dir = tempfile.TemporaryDirectory(prefix="probostitcher-")
+            self._tmp_dir = Path(self.__tmp_dir.name)
         else:
-            self.tmp_dir = Path(tempfile.mkdtemp(prefix="probostitcher-"))
+            self._tmp_dir = Path(tempfile.mkdtemp(prefix="probostitcher-"))
 
-    def prepare_chunks(self):
+    def _prepare_chunks(self):
         assert self.config["milestones"][0]["timestamp"] == 0
         self.video_chunks = []
         howmany = len(self.config["milestones"])
@@ -197,7 +197,7 @@ class Specs:
         if self.debug:
             print(message, file=sys.stderr)
 
-    def analyze_files(self):
+    def _analyze_files(self):
         """Run ffprobe on all inputs and store the information in self.infos"""
         self.input_infos = {}
         for input_info in self.config["inputs"]:
@@ -210,7 +210,7 @@ class Specs:
             input_file_info = ffmpeg.probe(input_info["filename"])
             self.input_infos[input_info["streamname"]] = input_file_info
 
-    def prepare_audio_track(self):
+    def _prepare_audio_track(self):
         audio_streams = []
         for input_specs in self.config["inputs"]:
             input_info = self.input_infos[input_specs["streamname"]]
@@ -236,12 +236,12 @@ class Specs:
         """Render the final video in the file specified by `destination`.
         First renders all chunks. Then concatenates the chunks and mixes in audio.
         """
-        final_video_path = str(self.tmp_dir / "final.webm")
+        final_video_path = str(self._tmp_dir / "final.webm")
         self.render_videos(final_video_path)
-        txt_filename = str(self.tmp_dir / "chunk-list.txt")
+        txt_filename = str(self._tmp_dir / "chunk-list.txt")
         with open(txt_filename, "w") as fh:
             for i in range(len(self.video_chunks)):
-                fh.write(f"file {self.tmp_dir}/chunk-'{i}.webm'\n")
+                fh.write(f"file {self._tmp_dir}/chunk-'{i}.webm'\n")
         command = [
             "ffmpeg",
             "-safe",
@@ -263,7 +263,7 @@ class Specs:
 
     def render_videos(self, destination: str):
         """Render the video chunks as specced, saving it to temporary files and returning them."""
-        base_filename = self.tmp_dir / "chunk-"
+        base_filename = self._tmp_dir / "chunk-"
         pool = Pool(self.parallelism)
 
         commands = []
@@ -279,7 +279,7 @@ class Specs:
         # TODO: check if any process errored out and collect error message
         self.print(repr(result))
 
-    def presign_s3_urls(self):
+    def _presign_s3_urls(self):
         for input in self.config["inputs"]:
             if input["filename"].startswith("s3://"):
                 input["filename"] = create_presigned_url(input["filename"])
