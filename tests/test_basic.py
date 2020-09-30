@@ -7,8 +7,7 @@ import pytest
 import tempfile
 
 
-CREATE_VIDEO = False
-CREATE_VIDEO = True
+CREATE_VIDEO = os.environ.get("CREATE_VIDEO") is not None
 
 
 def disabled_test_start_offsets():
