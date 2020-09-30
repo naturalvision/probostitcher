@@ -4,10 +4,10 @@ from probostitcher.specs import parse_ts
 
 import os
 import pytest
-import tempfile
 
 
 CREATE_VIDEO = os.environ.get("CREATE_VIDEO") is not None
+UPLOAD_VIDEO = os.environ.get("UPLOAD_VIDEO") is not None
 
 
 def disabled_test_start_offsets():
@@ -52,16 +52,13 @@ def test_video_generation(json_filename):
         cleanup=False,
         parallelism=4,
     )
-    # parallelism=1 200 seconds
-    # parallelism=4 92 seconds
+    for chunk in specs:
+        chunk.output("test").compile()  # Smoke test
+
+    tmp_path = f"/tmp/{specs.output_filename}"
     if CREATE_VIDEO:
-        tmp_path = get_tmp_path()
         specs.render(tmp_path)
         print(f"Written file {tmp_path}")
 
-
-def get_tmp_path():
-    fh, tmp_path = tempfile.mkstemp(".webm")
-    os.fdopen(fh).close()
-    os.unlink(tmp_path)
-    return tmp_path
+    if UPLOAD_VIDEO:
+        specs.upload(tmp_path)

@@ -1,2 +1,3 @@
 git+https://github.com/silviot/ffmpeg-python.git@source-node
 pendulum
+boto3

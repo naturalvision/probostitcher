@@ -1,4 +1,7 @@
+from botocore.client import Config
+from botocore.exceptions import ClientError
 from ffmpeg.nodes import FilterableStream
+from hashlib import sha512
 from multiprocessing import Pool
 from pathlib import Path
 from pendulum import DateTime
@@ -9,6 +12,7 @@ from typing import List
 from typing import Optional
 from urllib.parse import urlparse
 
+import boto3
 import ffmpeg
 import json
 import logging
@@ -43,6 +47,8 @@ class Specs:
     #: Number of ffmpeg processes to run in parallel
     parallelism: int
 
+    _output_filename: Optional[str] = None
+
     def __init__(
         self,
         filepath: str,
@@ -72,6 +78,24 @@ class Specs:
             self._tmp_dir = Path(self.__tmp_dir.name)
         else:
             self._tmp_dir = Path(tempfile.mkdtemp(prefix="probostitcher-"))
+
+    @property
+    def output_filename(self):
+        """The output filename is hashed from this file contents and specs contents.
+        This way we can make sure to not compile the same video twice.
+        """
+        if self._output_filename is None:
+            specs_file_contents = open(self.filepath).read().encode("utf-8")
+            specs_file_hash = self._output_filename = sha512(
+                specs_file_contents
+            ).hexdigest()
+            this_file_contents = open(__file__).read().encode("utf-8")
+            this_file_hash = self._output_filename = sha512(
+                this_file_contents
+            ).hexdigest()
+            self._output_filename = f"{this_file_hash[:4]}-{specs_file_hash[:12]}.webm"
+            self._output_filename = f"{specs_file_hash[:12]}.webm"
+        return self._output_filename
 
     def _prepare_chunks(self):
         assert self.config["milestones"][0]["timestamp"] == 0
@@ -232,10 +256,16 @@ class Specs:
             return filename
         return str(self.filepath.parent / filename)
 
-    def render(self, destination: str):
+    def render(self, destination: Optional[str] = None):
         """Render the final video in the file specified by `destination`.
+        If omitted, renders in the temporary directory.
         First renders all chunks. Then concatenates the chunks and mixes in audio.
         """
+        if destination is None:
+            destination = str(self._tmp_dir / self.output_filename)
+        if os.path.isfile(destination):
+            self.print("Not rendering {destination}: file exists")
+            return
         final_video_path = str(self._tmp_dir / "final.webm")
         self.render_videos(final_video_path)
         txt_filename = str(self._tmp_dir / "chunk-list.txt")
@@ -279,6 +309,24 @@ class Specs:
         # TODO: check if any process errored out and collect error message
         self.print(repr(result))
 
+    def upload(self, rendered_video_path: Optional[str] = None):
+        """Upload the final video to S3. If the file does not exist the video
+        will be rendered first.
+        """
+        if rendered_video_path is None:
+            rendered_video_path = str(self._tmp_dir / self.output_filename)
+        if not os.path.exists(rendered_video_path):
+            self.render(rendered_video_path)
+        bucket = os.environ["PROBOSTITCHER_OUTPUT_BUCKET"]
+
+        try:
+            get_boto_client().upload_file(
+                rendered_video_path, bucket, self.output_filename
+            )
+        except ClientError as e:
+            logging.error(e)
+            raise
+
     def _presign_s3_urls(self):
         for input in self.config["inputs"]:
             if input["filename"].startswith("s3://"):
@@ -304,23 +352,20 @@ class Specs:
         )
 
 
-def create_presigned_url(url: str, expiration: int = 3600) -> str:
-    """Generate a presigned URL to share an S3 object"""
-    from botocore.client import Config
-    from botocore.exceptions import ClientError
-
-    import boto3
-
-    parsed_url = urlparse(url)
+def get_boto_client():
     region = os.environ["PROBOSTITCHER_REGION"]
-    # Generate a presigned URL for the S3 object
-    s3_client = boto3.client(
+    return boto3.client(
         "s3",
         endpoint_url=f"https://s3.{region}.amazonaws.com",
         config=Config(signature_version="s3v4", region_name=region),
     )
+
+
+def create_presigned_url(url: str, expiration: int = 3600) -> str:
+    """Generate a presigned URL to share an S3 object"""
+    parsed_url = urlparse(url)
     try:
-        response = s3_client.generate_presigned_url(
+        response = get_boto_client().generate_presigned_url(
             "get_object",
             Params={
                 "Bucket": parsed_url.netloc,
