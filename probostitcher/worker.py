@@ -1,4 +1,5 @@
 from probostitcher import Specs
+from probostitcher.s3 import exists
 
 import boto3
 import os
@@ -14,6 +15,7 @@ def get_queue():
 
 
 def main():
+    print(f"Processing messages from queue {QUEUE_NAME} in region {QUEUE_REGION}")
     while True:
         process_messages()
 
@@ -24,8 +26,9 @@ def process_messages():
         print("Received message")
         try:
             specs = Specs(filecontents=message.body)
-            print("Created specs object")
-            specs.upload()
+            print(f"Created specs object for {specs.output_filename}")
+            if not exists(specs.output_filename):
+                specs.upload()
         except Exception as e:
             print(e)
         message.delete()

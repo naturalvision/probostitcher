@@ -1,4 +1,3 @@
-from botocore.client import Config
 from botocore.exceptions import ClientError
 from ffmpeg.nodes import FilterableStream
 from hashlib import sha512
@@ -6,13 +5,13 @@ from multiprocessing import Pool
 from pathlib import Path
 from pendulum import DateTime
 from pendulum import Period
+from probostitcher.s3 import create_presigned_url
+from probostitcher.s3 import get_boto_client
 from typing import Dict
 from typing import Iterator
 from typing import List
 from typing import Optional
-from urllib.parse import urlparse
 
-import boto3
 import ffmpeg
 import json
 import logging
@@ -358,34 +357,6 @@ class Specs:
         return DateTime.fromtimestamp(
             (self.config["output_start"] + seconds * 1000 ** 2) / 1000 ** 2
         )
-
-
-def get_boto_client():
-    region = os.environ["PROBOSTITCHER_REGION"]
-    return boto3.client(
-        "s3",
-        endpoint_url=f"https://s3.{region}.amazonaws.com",
-        config=Config(signature_version="s3v4", region_name=region),
-    )
-
-
-def create_presigned_url(url: str, expiration: int = 3600) -> str:
-    """Generate a presigned URL to share an S3 object"""
-    parsed_url = urlparse(url)
-    try:
-        response = get_boto_client().generate_presigned_url(
-            "get_object",
-            Params={
-                "Bucket": parsed_url.netloc,
-                "Key": parsed_url.path[1:],
-            },
-            ExpiresIn=expiration,
-        )
-    except ClientError as e:
-        logging.error(e)
-        raise
-    # The response contains the presigned URL
-    return response
 
 
 def run_ffmpeg(args: List[str]):
