@@ -2,6 +2,7 @@
 """
 from pathlib import Path
 from probostitcher import Specs
+from probostitcher.validation import validate_specs_schema
 from probostitcher.worker import get_queue
 
 import bottle
@@ -34,8 +35,9 @@ def index():
 
 
 def validate_specs(specs_json):
-    errors = []
-    specs = None
+    errors, specs = validate_specs_schema(specs_json), None
+    if errors:
+        return errors, specs
     try:
         specs = Specs(filecontents=specs_json)
     except Exception as e:

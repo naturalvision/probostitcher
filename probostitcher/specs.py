@@ -259,7 +259,11 @@ class Specs:
         """If the passed in file path is not absolute, convert it to absolute,
         using the directory of the JSON specs file (self.filepath) as root.
         """
-        if filename.startswith("http") or filename.startswith("/"):
+        if (
+            filename.startswith("http")
+            or filename.startswith("/")
+            or not hasattr(self, "filepath")
+        ):
             return filename
         return str(self.filepath.parent / filename)
 

@@ -2,6 +2,7 @@ from pathlib import Path
 from probostitcher import Specs
 from probostitcher.specs import parse_ts
 
+import json
 import os
 import probostitcher
 import pytest
@@ -65,3 +66,26 @@ def test_video_generation(json_filename):
 
     if UPLOAD_VIDEO:
         specs.upload(tmp_path)
+
+
+def test_validation():
+    from probostitcher.validation import validate_specs
+
+    good_one_text = (TEST_FILES_DIR / "example3.json").read_text()
+    assert validate_specs(good_one_text) == []
+
+    bad_one = json.loads(good_one_text)
+    del bad_one["inputs"]
+    assert validate_specs(json.dumps(bad_one)) == [": 'inputs' is a required property"]
+
+    bad_one = json.loads(good_one_text)
+    bad_one["inputs"] = []
+    assert validate_specs(json.dumps(bad_one)) == ["inputs: [] is too short"]
+
+    bad_one = json.loads(good_one_text)
+    del bad_one["output_size"]["width"]
+    del bad_one["output_duration"]
+    assert validate_specs(json.dumps(bad_one)) == [
+        "output_size: 'width' is a required property",
+        ": 'output_duration' is a required property",
+    ]

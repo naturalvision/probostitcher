@@ -1,4 +1,5 @@
 git+https://github.com/silviot/ffmpeg-python.git@source-node
 boto3
 bottle
+jsonschema
 pendulum

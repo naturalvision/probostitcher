@@ -1,0 +1,90 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "inputs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "properties": {
+          "filename": {
+            "type": "string"
+          },
+          "streamname": {
+            "type": "string"
+          }
+        },
+        "required": ["filename", "streamname"]
+      }
+    },
+    "output_start": {
+      "type": "integer"
+    },
+    "output_duration": {
+      "type": "integer"
+    },
+    "output_framerate": {
+      "type": "integer"
+    },
+    "output_size": {
+      "type": "object",
+      "properties": {
+        "width": {
+          "type": "integer"
+        },
+        "height": {
+          "type": "integer"
+        }
+      },
+      "required": ["width", "height"]
+    },
+    "milestones": {
+      "type": "array",
+      "items": [
+        {
+          "type": "object",
+          "properties": {
+            "timestamp": {
+              "type": "integer"
+            },
+            "videos": {
+              "type": "array",
+              "items": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "streamname": {
+                      "type": "string"
+                    },
+                    "x": {
+                      "type": "integer"
+                    },
+                    "y": {
+                      "type": "integer"
+                    },
+                    "width": {
+                      "type": "integer"
+                    },
+                    "height": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": ["streamname"]
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  },
+  "required": [
+    "inputs",
+    "output_start",
+    "output_duration",
+    "output_framerate",
+    "output_size",
+    "milestones"
+  ]
+}
