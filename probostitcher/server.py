@@ -22,6 +22,7 @@ TEST_FILES_DIR = Path(probostitcher.__file__).parent / "test-files"
 def index():
     specs_json = bottle.request.forms.get("specs")
     errors = []
+    video_url = None
     if specs_json:
         errors, specs = validate_specs(specs_json)
         if not errors:

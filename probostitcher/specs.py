@@ -239,7 +239,10 @@ class Specs:
             input_info["filename"] = self.absolute_path(input_info["filename"])
             self.print(f"Analyzing {input_info['filename']}")
             # Use ffprobe to get more info about streams
-            input_file_info = ffmpeg.probe(input_info["filename"])
+            try:
+                input_file_info = ffmpeg.probe(input_info["filename"])
+            except Exception as e:
+                raise ValueError(f"{e}\nstderr:\n{e.stderr.decode('utf-8')}")
             self.input_infos[input_info["streamname"]] = input_file_info
 
     def _prepare_audio_track(self):

@@ -13,9 +13,17 @@
   <body>
     <h1>Probostitcher</h1>
     <h2>{{! message}}</h2>
+    %if video_url:
+    <span>
+        <video controls width="250">
+            <source src="{{ video_url }}" type="video/webm">
+            Sorry, your browser doesn't support embedded videos.
+        </video>
+    </span>
+    %end
     <ul>
       %for error in errors:
-        <li>{{error}}</li>
+        <li><pre>{{error}}</pre></li>
       %end
     </ul>
     <form method="POST">
