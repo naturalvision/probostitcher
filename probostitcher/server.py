@@ -2,6 +2,8 @@
 """
 from pathlib import Path
 from probostitcher import Specs
+from probostitcher.s3 import create_presigned_url
+from probostitcher.s3 import OUTPUT_BUCKET
 from probostitcher.validation import validate_specs_schema
 from probostitcher.worker import get_queue
 
@@ -24,14 +26,22 @@ def index():
         errors, specs = validate_specs(specs_json)
         if not errors:
             submit_job(specs)
+            video_url = create_presigned_url(
+                f"s3://{OUTPUT_BUCKET}/{specs.output_filename}"
+            )
             message = "Job has been sumbitted. Results will be available "
-            message += '<a href="https://google.com">here</a>'
+            message += f'<a href="{video_url}">here</a>'
         else:
             message = "Could not process submitted json"
     else:
         specs_json = (TEST_FILES_DIR / "example3-s3.json").read_text()
         message = ""
-    return {"specs_json": specs_json, "message": message, "errors": errors}
+    return {
+        "specs_json": specs_json,
+        "message": message,
+        "errors": errors,
+        "video_url": video_url,
+    }
 
 
 def validate_specs(specs_json):
@@ -56,6 +66,8 @@ def submit_job(specs: Specs):
     queue.send_message(
         MessageBody=specs.filecontents,
         MessageGroupId=specs.output_filename,
+        # Maybe we should reconsider this: we use the hash of the specs to prevent message
+        # duplication; it means we won't be able to resubmit the very same job twice.
         MessageDeduplicationId=specs.output_filename,
     )
 

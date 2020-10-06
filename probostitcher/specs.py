@@ -7,6 +7,7 @@ from pendulum import DateTime
 from pendulum import Period
 from probostitcher.s3 import create_presigned_url
 from probostitcher.s3 import get_boto_client
+from probostitcher.s3 import OUTPUT_BUCKET
 from typing import Dict
 from typing import Iterator
 from typing import List
@@ -328,11 +329,10 @@ class Specs:
             rendered_video_path = str(self._tmp_dir / self.output_filename)
         if not os.path.exists(rendered_video_path):
             self.render(rendered_video_path)
-        bucket = os.environ["PROBOSTITCHER_OUTPUT_BUCKET"]
 
         try:
             get_boto_client().upload_file(
-                rendered_video_path, bucket, self.output_filename
+                rendered_video_path, OUTPUT_BUCKET, self.output_filename
             )
         except ClientError as e:
             logging.error(e)

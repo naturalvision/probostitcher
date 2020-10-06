@@ -27,8 +27,12 @@ def process_messages():
         try:
             specs = Specs(filecontents=message.body)
             print(f"Created specs object for {specs.output_filename}")
-            if not exists(specs.output_filename):
+            if exists(specs.output_filename):
+                print(f"{specs.output_filename} already present: skipping")
+            else:
+                print(f"Rendering and uploading {specs.output_filename}")
                 specs.upload()
+                print(f"{specs.output_filename} uploaded")
         except Exception as e:
             print(e)
         message.delete()

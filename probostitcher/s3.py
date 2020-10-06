@@ -8,6 +8,7 @@ import os
 
 
 REGION = os.environ["PROBOSTITCHER_REGION"]
+OUTPUT_BUCKET = os.environ["PROBOSTITCHER_OUTPUT_BUCKET"]
 
 
 def get_boto_client():
@@ -39,9 +40,7 @@ def create_presigned_url(url: str, expiration: int = 3600) -> str:
 
 def exists(object_key: str) -> bool:
     try:
-        get_boto_client().head_object(
-            Bucket=os.environ["PROBOSTITCHER_OUTPUT_BUCKET"], Key=object_key
-        )
+        get_boto_client().head_object(Bucket=OUTPUT_BUCKET, Key=object_key)
     except ClientError:
         return False
     return True
