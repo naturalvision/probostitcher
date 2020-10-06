@@ -2,6 +2,13 @@
 <html lang="en">
   <head>
     <meta charset="utf-8">
+    <script type="text/javascript" src="/static/main.js"></script>
+    <script>
+        %if video_url:
+            VIDEO_URL = {{! json.dumps(video_url) }};
+            schedule_check_video()
+        %end
+    </script>
     <title>Probostitcher</title>
     <style>
     textarea {
@@ -16,7 +23,6 @@
     %if video_url:
     <span>
         <video controls width="250">
-            <source src="{{ video_url }}" type="video/webm">
             Sorry, your browser doesn't support embedded videos.
         </video>
     </span>
