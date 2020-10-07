@@ -3,9 +3,9 @@ function schedule_check_video() {
 }
 
 function check_video() {
-  fetch(VIDEO_URL, { method: "HEAD" })
+  fetch(VIDEO_URL, { headers: { Range: "bytes=0-20" } })
     .then(function (response) {
-      if (response.status !== 200) {
+      if (response.status !== 206) {
         setTimeout(check_video, 2000);
         return;
       }
