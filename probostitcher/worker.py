@@ -25,7 +25,7 @@ def process_messages():
     for message in queue.receive_messages(WaitTimeSeconds=10):
         print("Received message")
         try:
-            specs = Specs(filecontents=message.body)
+            specs = Specs(filecontents=message.body, debug=True)
             print(f"Created specs object for {specs.output_filename}")
             if exists(specs.output_filename):
                 print(f"{specs.output_filename} already present: skipping")
