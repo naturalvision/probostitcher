@@ -102,7 +102,6 @@ class Specs:
                 this_file_contents
             ).hexdigest()
             self._output_filename = f"{this_file_hash[:4]}-{specs_file_hash[:12]}.webm"
-            self._output_filename = f"{specs_file_hash[:12]}.webm"
         return self._output_filename
 
     def _prepare_chunks(self):
