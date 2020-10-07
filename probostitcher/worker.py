@@ -24,6 +24,7 @@ def process_messages():
     queue = get_queue()
     for message in queue.receive_messages(WaitTimeSeconds=10):
         print("Received message")
+        message.delete()
         try:
             specs = Specs(filecontents=message.body, debug=True)
             print(f"Created specs object for {specs.output_filename}")
@@ -35,7 +36,6 @@ def process_messages():
                 print(f"{specs.output_filename} uploaded")
         except Exception as e:
             print(e)
-        message.delete()
 
 
 if __name__ == "__main__":
