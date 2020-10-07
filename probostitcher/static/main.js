@@ -3,7 +3,7 @@ function schedule_check_video() {
 }
 
 function check_video() {
-  fetch(VIDEO_URL)
+  fetch(VIDEO_URL, { method: "HEAD" })
     .then(function (response) {
       if (response.status !== 200) {
         setTimeout(check_video, 2000);
