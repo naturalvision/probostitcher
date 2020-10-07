@@ -5,6 +5,8 @@ variables:
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
   PRE_COMMIT_HOME: "$CI_PROJECT_DIR/.cache/pre-commit"
   CREATE_VIDEO: "True"
+  PROBOSTITCHER_REGION: dummy
+  PROBOSTITCHER_OUTPUT_BUCKET: dummy
 cache:
   paths:
     - .cache

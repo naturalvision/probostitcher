@@ -69,23 +69,25 @@ def test_video_generation(json_filename):
 
 
 def test_validation():
-    from probostitcher.validation import validate_specs
+    from probostitcher.validation import validate_specs_schema
 
     good_one_text = (TEST_FILES_DIR / "example3.json").read_text()
-    assert validate_specs(good_one_text) == []
+    assert validate_specs_schema(good_one_text) == []
 
     bad_one = json.loads(good_one_text)
     del bad_one["inputs"]
-    assert validate_specs(json.dumps(bad_one)) == [": 'inputs' is a required property"]
+    assert validate_specs_schema(json.dumps(bad_one)) == [
+        ": 'inputs' is a required property"
+    ]
 
     bad_one = json.loads(good_one_text)
     bad_one["inputs"] = []
-    assert validate_specs(json.dumps(bad_one)) == ["inputs: [] is too short"]
+    assert validate_specs_schema(json.dumps(bad_one)) == ["inputs: [] is too short"]
 
     bad_one = json.loads(good_one_text)
     del bad_one["output_size"]["width"]
     del bad_one["output_duration"]
-    assert validate_specs(json.dumps(bad_one)) == [
+    assert validate_specs_schema(json.dumps(bad_one)) == [
         "output_size: 'width' is a required property",
         ": 'output_duration' is a required property",
     ]
