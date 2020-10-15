@@ -6,11 +6,14 @@ from probostitcher.s3 import create_presigned_url
 from probostitcher.s3 import OUTPUT_BUCKET
 from probostitcher.validation import validate_specs_schema
 from probostitcher.worker import get_queue
+from probostitcher.worker import QUEUE_NAME
+from probostitcher.worker import QUEUE_REGION
 
 import bottle
 import json
 import os
 import probostitcher
+import uuid
 
 
 PORT = os.environ.get("PROBOSTITCHER_SERVER_PORT", 8000)
@@ -74,11 +77,17 @@ def submit_job(specs: Specs):
     queue = get_queue()
     queue.send_message(
         MessageBody=specs.filecontents,
-        MessageGroupId=specs.output_filename,
+        MessageGroupId=uuid.uuid4().hex,
+        # MessageGroupId=specs.output_filename,
         # Maybe we should reconsider this: we use the hash of the specs to prevent message
         # duplication; it means we won't be able to resubmit the very same job twice.
-        MessageDeduplicationId=specs.output_filename,
+        # We comment it out for now, to be able to repeatedly test the same specs
+        # MessageDeduplicationId=specs.output_filename,
+        # But we need to provide a value, since without it we get the error:
+        # The queue should either have ContentBasedDeduplication enabled or MessageDeduplicationId provided explicitly
+        MessageDeduplicationId=uuid.uuid4().hex,
     )
+    print(f"Submitted job to queue {QUEUE_NAME} in {QUEUE_REGION}")
 
 
 def main():

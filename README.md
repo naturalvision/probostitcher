@@ -10,6 +10,8 @@
   export AWS_ACCESS_KEY_ID=XXXXXXXXXXXXXXXXXXXX
   export PROBOSTITCHER_OUTPUT_BUCKET=probostitcher
   export PROBOSTITCHER_REGION=eu-central-1
+  export PROBOSTITCHER_QUEUE_NAME=probostitcher.fifo
+  export PROBOSTITCHER_QUEUE_REGION=eu-west-2
 
 - Install
 
