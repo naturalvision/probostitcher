@@ -244,6 +244,17 @@ class Specs:
                 input_file_info = ffmpeg.probe(
                     input_info["filename"], timeout=FFPROBE_TIMEOUT
                 )
+            except subprocess.TimeoutExpired:
+                # Try again in case of timeout
+                self.print(
+                    f"Timeout {FFPROBE_TIMEOUT} expired while ananlyzing {input_info['filename']} retrying"
+                )
+                try:
+                    input_file_info = ffmpeg.probe(
+                        input_info["filename"], timeout=FFPROBE_TIMEOUT
+                    )
+                except Exception as e:
+                    raise ValueError(f"{e}\nstderr:\n{e.stderr.decode('utf-8')}")
             except Exception as e:
                 raise ValueError(f"{e}\nstderr:\n{e.stderr.decode('utf-8')}")
             self.input_infos[input_info["streamname"]] = input_file_info
