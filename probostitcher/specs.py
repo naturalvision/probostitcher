@@ -23,6 +23,9 @@ import sys
 import tempfile
 
 
+FFPROBE_TIMEOUT = 10
+
+
 class Specs:
     """Represents a JSON file and accompanying video/audio files.
     Instantiate passing the JSON file path as the only argument to `__init__`.
@@ -238,7 +241,9 @@ class Specs:
             self.print(f"Analyzing {input_info['filename']}")
             # Use ffprobe to get more info about streams
             try:
-                input_file_info = ffmpeg.probe(input_info["filename"])
+                input_file_info = ffmpeg.probe(
+                    input_info["filename"], timeout=FFPROBE_TIMEOUT
+                )
             except Exception as e:
                 raise ValueError(f"{e}\nstderr:\n{e.stderr.decode('utf-8')}")
             self.input_infos[input_info["streamname"]] = input_file_info
@@ -298,7 +303,7 @@ class Specs:
             final_video_path,
         ]
         self.print(subprocess.check_output(command).decode("utf-8"))
-        os.system('stty sane')
+        os.system("stty sane")
         video = ffmpeg.input(final_video_path)
         final = self.audio_track.output(
             video, destination, t=self.output_period.in_seconds(), vcodec="copy"
@@ -320,10 +325,10 @@ class Specs:
             )
             commands.append(todo.compile())
         result = pool.map(run_ffmpeg, commands)
-        os.system('stty sane')
+        os.system("stty sane")
         # TODO: check if any process errored out and collect error message
         self.print(repr(result))
-        os.system('stty sane')
+        os.system("stty sane")
 
     def upload(self, rendered_video_path: Optional[str] = None):
         """Upload the final video to S3. If the file does not exist the video
