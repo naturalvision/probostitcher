@@ -2,39 +2,39 @@
   "debug": true,
   "inputs": [
     {
-      "filename": "s3://probostitcher/videoroom-1234-user-1906261619318266-1600260601980811-video.webm",
+      "filename": "s3://s3-janus-daniel/1234/videoroom-1234-user-1906261619318266-1600260601980811-video.webm",
       "streamname": "silvio-with-clap"
     },
     {
-      "filename": "s3://probostitcher/videoroom-1234-user-1906261619318266-1600260601980811-audio.opus",
+      "filename": "s3://s3-janus-daniel/1234/videoroom-1234-user-1906261619318266-1600260601980811-audio.opus",
       "streamname": "silvio-with-clap-audio"
     },
     {
-      "filename": "s3://probostitcher/videoroom-1234-user-2561348984276797-1600260519360732-video.webm",
+      "filename": "s3://s3-janus-daniel/1234/videoroom-1234-user-2561348984276797-1600260519360732-video.webm",
       "streamname": "silvio-screenshare"
     },
     {
-      "filename": "s3://probostitcher/videoroom-1234-user-3827644829091266-1600260492928227-video.webm",
+      "filename": "s3://s3-janus-daniel/1234/videoroom-1234-user-3827644829091266-1600260492928227-video.webm",
       "streamname": "silvio-video"
     },
     {
-      "filename": "s3://probostitcher/videoroom-1234-user-3827644829091266-1600260492928227-audio.opus",
+      "filename": "s3://s3-janus-daniel/1234/videoroom-1234-user-3827644829091266-1600260492928227-audio.opus",
       "streamname": "silvio-audio"
     },
     {
-      "filename": "s3://probostitcher/videoroom-1234-user-4731215766182973-1600260601852698-video.webm",
+      "filename": "s3://s3-janus-daniel/1234/videoroom-1234-user-4731215766182973-1600260601852698-video.webm",
       "streamname": "silvio-screenshare-with-clap"
     },
     {
-      "filename": "s3://probostitcher/videoroom-1234-user-5266021426521020-1600260399802272-video.webm",
+      "filename": "s3://s3-janus-daniel/1234/videoroom-1234-user-5266021426521020-1600260399802272-video.webm",
       "streamname": "daniel-video"
     },
     {
-      "filename": "s3://probostitcher/videoroom-1234-user-5266021426521020-1600260399802272-audio.opus",
+      "filename": "s3://s3-janus-daniel/1234/videoroom-1234-user-5266021426521020-1600260399802272-audio.opus",
       "streamname": "daniel-audio"
     },
     {
-      "filename": "s3://probostitcher/videoroom-1234-user-7098320872262523-1600260602068888-video.webm",
+      "filename": "s3://s3-janus-daniel/1234/videoroom-1234-user-7098320872262523-1600260602068888-video.webm",
       "streamname": "daniel-screenshare"
     }
   ],
