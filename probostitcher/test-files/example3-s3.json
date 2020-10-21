@@ -1,4 +1,5 @@
 {
+  "debug": true,
   "inputs": [
     {
       "filename": "s3://probostitcher/videoroom-1234-user-1906261619318266-1600260601980811-video.webm",

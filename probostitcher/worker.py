@@ -26,7 +26,7 @@ def process_messages():
         print("Received message")
         message.delete()
         try:
-            specs = Specs(filecontents=message.body, debug=True)
+            specs = Specs(filecontents=message.body)
             print(f"Created specs object for {specs.output_filename}")
             if exists(specs.output_filename):
                 print(f"{specs.output_filename} already present: skipping")

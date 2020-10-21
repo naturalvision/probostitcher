@@ -55,7 +55,6 @@ class Specs:
         self,
         filepath: Optional[str] = None,
         filecontents: Optional[str] = None,
-        debug: bool = False,
         cleanup: bool = True,
         parallelism: int = len(os.sched_getaffinity(0)),
     ):
@@ -68,7 +67,7 @@ class Specs:
         else:
             self.filecontents = filecontents
         self.config = json.loads(self.filecontents)
-        self.debug = debug
+        self.debug = self.config.get("debug", False)
         self.parallelism = parallelism
         output_start = parse_ts(int(self.config["output_start"]))
         output_end = output_start.add(seconds=self.config["output_duration"])
