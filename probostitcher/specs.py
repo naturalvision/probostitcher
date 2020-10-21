@@ -337,7 +337,7 @@ class Specs:
 
         try:
             get_boto_client().upload_file(
-                rendered_video_path, OUTPUT_BUCKET, self.output_filename
+                rendered_video_path, OUTPUT_BUCKET, f"output/{self.output_filename}"
             )
         except ClientError as e:
             logging.error(e)

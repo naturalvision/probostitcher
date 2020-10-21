@@ -33,7 +33,7 @@ def index():
         if not errors:
             submit_job(specs)
             video_url = create_presigned_url(
-                f"s3://{OUTPUT_BUCKET}/{specs.output_filename}", expiration=86400
+                f"s3://{OUTPUT_BUCKET}/output/{specs.output_filename}", expiration=86400
             )
             message = "Job has been sumbitted. Results will be available "
             message += f'<a href="{video_url}">here</a>'
