@@ -22,3 +22,18 @@
 Run the probostitcher http server:
 
 probostitcher
+
+In a different terminal, run
+
+probostitcher-worker
+
+Open http://localhost:8000/ on your browser.
+
+You'll be presented a form to submit your specs file.
+
+If an error is found in the JSON specs, it will be shown on form submission.
+
+Upon successful submission a job will be submitted to the SQS queue, and the worker process will use ffmpeg to
+render the final video. The final video will be then uploaded to S3.
+
+The form will display the video as soon as it's rendered (it polls every two seconds to see if the video is done).
