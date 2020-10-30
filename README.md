@@ -25,19 +25,19 @@
 
 Run the probostitcher http server:
 
-  ```bash
-  probostitcher
-  ```
+```bash
+probostitcher
+```
 
 In a different terminal, run
 
-  ```bash
-  probostitcher-worker
-  ```
+```bash
+probostitcher-worker
+```
 
 Open http://localhost:8000/ on your browser.
 
-You'll be presented a form to submit your specs file.  Please find
+You'll be presented a form to submit your specs file. Please find
 examples of spec files in `probostitcher/test-files/*json`.
 
 If an error is found in the JSON specs, it will be shown on form
