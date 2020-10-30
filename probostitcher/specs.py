@@ -241,9 +241,10 @@ class Specs:
             self.print(f"Analyzing {input_info['filename']}")
             # Use ffprobe to get more info about streams
             try:
-                input_file_info = ffmpeg.probe(
-                    input_info["filename"], timeout=FFPROBE_TIMEOUT
-                )
+                options = {}
+                if input_info["filename"].startswith("http"):
+                    options = dict(timeout=FFPROBE_TIMEOUT)
+                input_file_info = ffmpeg.probe(input_info["filename"], **options)
             except subprocess.TimeoutExpired:
                 # Try again in case of timeout
                 self.print(
