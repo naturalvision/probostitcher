@@ -52,7 +52,6 @@ if "AWS_SECRET_ACCESS_KEY" in os.environ:
 def test_video_generation(json_filename):
     specs = Specs(
         TEST_FILES_DIR / json_filename,
-        debug=True,
         cleanup=False,
         parallelism=4,
     )
